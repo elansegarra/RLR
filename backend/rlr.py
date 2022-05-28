@@ -6,14 +6,12 @@ class rlr:
     def __init__(self):
         self.ready_to_review = False
 
-    def load_datasets(self, data_l_path, data_r_path, 
-                        id_vars_both = None, id_vars_l = None, id_vars_r = None):
+    def load_datasets(self, data_l_path, data_r_path, id_vars_l, id_vars_r):
         """ Loads two data sets and specifies the id variables in each 
         
         Args:
             data_l_path: (str) path to left data set file (either csv or dta)
             data_r_path: (str) path to right data set file (either csv or dta)
-            id_vars: (str or list of str) variables that uniquely define a record in both data sets
             id_vars_l: (str or list of str) variables that uniquely define a record in left data set
             id_vars_r: (str or list of str) variables that uniquely define a record in right data set
                 note: passing id_vars will trump both id_Vars_l and id_vars_r
@@ -29,15 +27,6 @@ class rlr:
         elif    data_r_ext == ".dta":   self.dataR = pd.read_stata(data_r_path)
         else:                           
             raise NotImplementedError(f"Filetype of {data_r_path} must be either csv or dta")
-        
-        # Check that user passed (id_vars_both) or (id_vars_l and id_vars_r) 
-        if (id_vars_both is None) and ((id_vars_l is None) or (id_vars_r is None)):
-            raise NotImplementedError("User must pass at least one id variable")
-
-        # Passing id_vars_both will ignore any values passed to either id_vars_l or id_vars_r
-        if id_vars_both is not None:
-            id_vars_l = id_vars_both
-            id_vars_r = id_vars_both
         
         # Validate left ids (check they exist and uniquely define a row) and save them
         if isinstance(id_vars_l, str): id_vars_l = [id_vars_l] # Convert to list if a string
