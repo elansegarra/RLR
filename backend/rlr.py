@@ -14,7 +14,6 @@ class rlr:
             data_r_path: (str) path to right data set file (either csv or dta)
             id_vars_l: (str or list of str) variables that uniquely define a record in left data set
             id_vars_r: (str or list of str) variables that uniquely define a record in right data set
-                note: passing id_vars will trump both id_Vars_l and id_vars_r
         """
         # Check for file and file type, then load each file into a df
         data_l_ext = os.path.splitext(data_l_path)[1]
@@ -28,15 +27,19 @@ class rlr:
         else:                           
             raise NotImplementedError(f"Filetype of {data_r_path} must be either csv or dta")
         
-        # Validate left ids (check they exist and uniquely define a row) and save them
+        # Standardize ids and check they differ
         if isinstance(id_vars_l, str): id_vars_l = [id_vars_l] # Convert to list if a string
+        if isinstance(id_vars_r, str): id_vars_r = [id_vars_r] # Convert to list if a string
+        id_overlap = set(id_vars_l) & set(id_vars_r)
+        assert len(id_overlap) == 0, "Currently cannot handle overlapping id variables"
+
+        # Validate left ids (check they exist and uniquely define a row) and save them
         ids_exist = pd.Series(id_vars_l).isin(self.dataL.columns).all()
         assert ids_exist, f"id variables ({id_vars_l}) not found in the left data set"
         assert self.dataL.set_index(id_vars_l).index.is_unique, f"id variables ({id_vars_l} do not uniquely identify the left data set"
         self.id_vars_l = id_vars_l
         self.dataL.set_index(self.id_vars_l, inplace=True, drop=False)
         # Validate right ids (check they exist and uniquely define a row) and save them
-        if isinstance(id_vars_r, str): id_vars_r = [id_vars_r] # Convert to list if a string
         ids_exist = pd.Series(id_vars_r).isin(self.dataR.columns).all()
         assert  ids_exist, f"id_vars_r ({id_vars_r}) not found in the right data set"
         assert self.dataR.set_index(id_vars_r).index.is_unique, f"id variables ({id_vars_r} do not uniquely identify the right data set"
