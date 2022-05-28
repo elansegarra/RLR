@@ -14,6 +14,27 @@ class rlr:
         self.curr_comp_pair_index = 0
     
     def load_comp_schema(self, var_schema = None, comp_options = None):
+        """ Validate and load either the variable schema or comparison options
+
+        Args:
+            var_schema: (list of dicts) where each dictionary has 3 keys
+                'name': (str) name of variable group
+                'lvars': (list of str) column names of variable in left data set
+                'rvars': (list of str) column names of variable in right data set
+            comp_options: (list of str) indicates the possible choice for a match determination
+        """
+        if var_schema is not None:
+            # Verify that var_schema is properly structured
+            for var_group in var_schema:
+                assert 'name' in var_group, f"No 'name' key found in {var_group}"
+                assert 'lvars' in var_group, f"No 'lvars' key found in {var_group}"
+                assert 'rvars' in var_group, f"No 'rvars' key found in {var_group}"
+            self.var_schema = var_schema
+        if comp_options is not None:
+            # Verify that comp_options is a list of strings
+            assert isinstance(comp_options, list), f"The object passed to 'comp_options' is not a list"
+            self.comp_options = [str(opt) for opt in comp_options]
+
         pass
 
     def get_curr_comp_pair(self):
