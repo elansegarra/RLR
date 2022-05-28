@@ -12,8 +12,9 @@ st.set_page_config(page_title="RLR: Record Linkage Review",  #page_icon=im,
 #### Function Definitions #################################################
 ###########################################################################
 
-def center(text):
-    return("<p style='text-align: center;'>"+text+"</p>")
+def tformat(text, align='C', el='p'):
+    align_dict = {'L':'left', 'C':'center','R':'right'}
+    return(f"<{el} style='text-align: {align_dict[align]};'>{text}</{el}>")
 
 def next_pair():
     st.session_state['curr_link_pair'] += 1
@@ -64,22 +65,20 @@ if len(link_pairs) == 0:
 else:
     # Data Side Titles
     tcol1, tcol2 = st.columns(2)
-    tcol1.markdown(center("Left Data"),  unsafe_allow_html=True)
-    tcol2.markdown(center("Right Data"),  unsafe_allow_html=True)
+    tcol1.markdown(tformat("Left Data"),  unsafe_allow_html=True)
+    tcol2.markdown(tformat("Right Data"),  unsafe_allow_html=True)
 
     # Actual data (iterate through var schemas)
     curr_link_ids = link_pairs[st.session_state['curr_link_pair']]
     recL = dfL.loc[curr_link_ids[0]]
     recR = dfR.loc[curr_link_ids[1]]
-    # st.write(recL)
-    # st.write(recR)
     for var_group in var_schema:
         Lcol, Mcol, Rcol = st.columns([4,1,4])
         L_var_name = var_group['L_vars'][0]
         R_var_name = var_group['R_vars'][0]
-        Lcol.markdown(center(str(recL[L_var_name])),  unsafe_allow_html=True)
-        Mcol.markdown(center(var_group['name']),  unsafe_allow_html=True)
-        Rcol.markdown(center(str(recR[R_var_name])),  unsafe_allow_html=True)
+        Lcol.markdown(tformat(str(recL[L_var_name]),'R'),  unsafe_allow_html=True)
+        Mcol.markdown(tformat(var_group['name']),  unsafe_allow_html=True)
+        Rcol.markdown(tformat(str(recR[R_var_name]),'L'),  unsafe_allow_html=True)
 
     # Buttons for link determinations
     prev_col, choice_col, next_col = st.columns([1,4,1])
