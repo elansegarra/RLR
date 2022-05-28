@@ -1,0 +1,6 @@
+# Py cache files
+__pycache__/
+
+# everything in the temporary and image folder
+tmp/
+user/
