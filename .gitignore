@@ -1,6 +1,10 @@
 # Py cache files
 __pycache__/
 
+# data files
+*.csv
+*.dta
+
 # everything in the temporary and image folder
 tmp/
 user/
