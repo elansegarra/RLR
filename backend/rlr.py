@@ -3,11 +3,53 @@ import pandas as pd
 class rlr:
 
     def __init__(self):
-        self.dataL = None
-        self.dataR = None
+    def load_datasets(self, data_l_path, data_r_path, 
+                        id_vars_both = None, id_vars_l = None, id_vars_r = None):
+        """ Loads two data sets and specifies the id variables in each 
+        
+        Args:
+            data_l_path: (str) path to left data set file (either csv or dta)
+            data_r_path: (str) path to right data set file (either csv or dta)
+            id_vars: (str or list of str) variables that uniquely define a record in both data sets
+            id_vars_l: (str or list of str) variables that uniquely define a record in left data set
+            id_vars_r: (str or list of str) variables that uniquely define a record in right data set
+                note: passing id_vars will trump both id_Vars_l and id_vars_r
+        """
+        # Check for file and file type, then load each file into a df
+        data_l_ext = os.path.splitext(data_l_path)[1]
+        data_r_ext = os.path.splitext(data_r_path)[1]
+        if      data_l_ext == ".csv":   self.dataL = pd.read_csv(data_l_path)
+        elif    data_l_ext == ".dta":   self.dataL = pd.read_stata(data_l_path)
+        else:                           
+            raise NotImplementedError(f"Filetype of {data_l_path} must be either csv or dta")
+        if      data_r_ext == ".csv":   self.dataR = pd.read_csv(data_r_path)
+        elif    data_r_ext == ".dta":   self.dataR = pd.read_stata(data_r_path)
+        else:                           
+            raise NotImplementedError(f"Filetype of {data_r_path} must be either csv or dta")
+        
+        # Check that user passed (id_vars_both) or (id_vars_l and id_vars_r) 
+        if (id_vars_both is None) and ((id_vars_l is None) or (id_vars_r is None)):
+            raise NotImplementedError("User must pass at least one id variable")
 
-    def load_datasets(self, dataL, dataR, id_vars):
-        pass
+        # Passing id_vars_both will ignore any values passed to either id_vars_l or id_vars_r
+        if id_vars_both is not None:
+            id_vars_l = id_vars_both
+            id_vars_r = id_vars_both
+
+        # Validate left ids (check they exist and uniquely define a row) and save them
+        if isinstance(id_vars_l, str): id_vars_l = [id_vars_l] # Convert to list if a string
+        ids_exist = pd.Series(id_vars_l).isin(self.dataL.columns).all()
+        assert ids_exist, f"id variables ({id_vars_l}) not found in the left data set"
+        assert self.dataL.set_index(id_vars_l).index.is_unique, f"id variables ({id_vars_l} do not uniquely identify the left data set"
+        self.id_vars_l = id_vars_l
+        self.dataL.set_index(self.id_vars_l, inplace=True, drop=False)
+        # Validate right ids (check they exist and uniquely define a row) and save them
+        if isinstance(id_vars_r, str): id_vars_r = [id_vars_r] # Convert to list if a string
+        ids_exist = pd.Series(id_vars_r).isin(self.dataR.columns).all()
+        assert  ids_exist, f"id_vars_r ({id_vars_r}) not found in the right data set"
+        assert self.dataR.set_index(id_vars_r).index.is_unique, f"id variables ({id_vars_r} do not uniquely identify the right data set"
+        self.id_vars_r = id_vars_r
+        self.dataR.set_index(self.id_vars_r, inplace=True, drop=False)
 
     def load_comp_pairs(self, comp_pairs):
         self.comp_pairs = comp_pairs
