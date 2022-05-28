@@ -1,9 +1,18 @@
 import pandas as pd
+import numpy as np
 import os
+import warnings
 
 class rlr:
+    REV_LABEL_COL = "rlr_label"
+    REV_LABEL_IND_COL = "rlr_label_ind"
+    REV_DATE_COL = "rlr_choice_date"
+    REV_NOTE_COL = "rlr_note"
+    COMP_EXIST_THRESH = 0.8  # Set to 0 to skip checking if all comp pairs exist in data
 
     def __init__(self):
+        self.dataL = None
+        self.dataR = None
         self.ready_to_review = False
 
     def load_datasets(self, data_l_path, data_r_path, id_vars_l, id_vars_r):
@@ -46,9 +55,58 @@ class rlr:
         self.id_vars_r = id_vars_r
         self.dataR.set_index(self.id_vars_r, inplace=True, drop=False)
 
-    def load_comp_pairs(self, comp_pairs):
-        self.comp_pairs = comp_pairs
+    def load_comp_pairs(self, comp_pairs_path):
+        """ Loads a file with pairs of records to compare for review
+        
+        Args:
+            comp_pairs_path: (str) path to tabular file containing pairs of id values
+                from the dataL and dataR files. Data set should contain all columns 
+                found in self.id_vars_l and self.id_vars_r
+        """
+        # Check that data has already been loaded
+        assert self.dataL is not None, "Load a data file before loading a comparison file"
+        assert self.dataR is not None, "Load a data file before loading a comparison file"
+        # Validate file format and load the file
+        data_ext = os.path.splitext(comp_pairs_path)[1]
+        if      data_ext == ".csv":   comp_df = pd.read_csv(comp_pairs_path)
+        elif    data_ext == ".dta":   comp_df = pd.read_stata(comp_pairs_path)
+        else:   raise NotImplementedError(f"Filetype of {data_ext} must be either csv or dta")
+        
+        # Check that ids in the file are found in the data files
+        l_ids_exist = pd.Series(self.id_vars_l).isin(comp_df.columns).all()
+        r_ids_exist = pd.Series(self.id_vars_r).isin(comp_df.columns).all()
+        assert l_ids_exist, f"Left data ids ({self.id_vars_l}) not found in passed comparison file."
+        assert r_ids_exist, f"Right data ids ({self.id_vars_r}) not found in passed comparison file."
+
+        # Check that id_vars_l and id_vars_r form a unqiue id for records in comparison file
+        all_ids = self.id_vars_l + self.id_vars_r
+        ids_are_unique = comp_df.set_index(all_ids).index.is_unique
+        assert ids_are_unique, f"Id variables ({all_ids} do not uniquely identify records in comparison file"
+        # comp_df.set_index(all_ids, inplace=True, drop=False)
+        
+        # Check that id value pairs are found in the data files (assuming a positive threshhold)
+        num_missing = 0
+        if self.COMP_EXIST_THRESH > 0:
+            for i in range(comp_df.shape[0]):
+                # TODO: Below logic assumes id_vars only include one variable each
+                l_id = comp_df.iloc[i][self.id_vars_l[0]]
+                r_id = comp_df.iloc[i][self.id_vars_r[0]]
+                if (l_id not in self.dataL.index) or (r_id not in self.dataR.index):
+                    comp_df.at[i, self.REV_LABEL_IND_COL] = -1
+                    num_missing += 1
+        perc_found = (comp_df.shape[0] - num_missing)/comp_df.shape[0]
+        if perc_found < self.COMP_EXIST_THRESH:
+            warnings.warn(f"Only found {np.round(perc_found*100,1)}% of comparison ids.")
+        
+        # Add comparison columns if not already there
+        for comp_var in [self.REV_LABEL_COL, self.REV_LABEL_IND_COL, 
+                        self.REV_DATE_COL, self.REV_NOTE_COL]:
+            if comp_var not in comp_df: comp_df[comp_var] = None
+
+        # Save comparison file to class instance and instantiate other relvant variables
+        self.comp_df = comp_df
         self.curr_comp_pair_index = 0
+        self.num_comparisons = self.comp_df.shape[0]
     
     def load_comp_schema(self, var_schema = None, comp_options = None):
         """ Validate and load either the variable schema or comparison options
