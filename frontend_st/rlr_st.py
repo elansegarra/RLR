@@ -1,7 +1,5 @@
-from turtle import onclick
 import streamlit as st
 import pandas as pd
-import numpy as np
 
 # To run from command line (in lib folder): "streamlit run rlr_st.py --server.port 8889"
 

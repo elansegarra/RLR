@@ -1,8 +1,11 @@
 import pandas as pd
+import os
 
 class rlr:
 
     def __init__(self):
+        self.ready_to_review = False
+
     def load_datasets(self, data_l_path, data_r_path, 
                         id_vars_both = None, id_vars_l = None, id_vars_r = None):
         """ Loads two data sets and specifies the id variables in each 
@@ -35,7 +38,7 @@ class rlr:
         if id_vars_both is not None:
             id_vars_l = id_vars_both
             id_vars_r = id_vars_both
-
+        
         # Validate left ids (check they exist and uniquely define a row) and save them
         if isinstance(id_vars_l, str): id_vars_l = [id_vars_l] # Convert to list if a string
         ids_exist = pd.Series(id_vars_l).isin(self.dataL.columns).all()
@@ -87,3 +90,10 @@ class rlr:
     
     def get_comp_options(self):
         return self.comp_options
+
+    def save_comp_choice(self, choice, comp_pair_ind = None):
+        # Checks and saves the choice to the current comparison pair (of that specified by comp_pair_ind)
+        if choice not in self.comp_options:
+            raise NotImplementedError
+        else:
+            pass
