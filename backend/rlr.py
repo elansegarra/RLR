@@ -90,6 +90,12 @@ class rlr:
         ids_are_unique = comp_df.set_index(all_ids).index.is_unique
         assert ids_are_unique, f"Id variables ({all_ids} do not uniquely identify records in comparison file"
         # comp_df.set_index(all_ids, inplace=True, drop=False)
+
+        # Add comparison columns if not already there
+        if self.REV_LABEL_IND_COL not in comp_df:
+            comp_df[self.REV_LABEL_IND_COL] = 0
+        for comp_var in [self.REV_LABEL_COL, self.REV_DATE_COL, self.REV_NOTE_COL]:
+            if comp_var not in comp_df: comp_df[comp_var] = None
         
         # Check that id value pairs are found in the data files (assuming a positive threshhold)
         num_missing = 0
@@ -104,11 +110,6 @@ class rlr:
         perc_found = (comp_df.shape[0] - num_missing)/comp_df.shape[0]
         if perc_found < self.COMP_EXIST_THRESH:
             warnings.warn(f"Only found {np.round(perc_found*100,1)}% of comparison ids.")
-        
-        # Add comparison columns if not already there
-        for comp_var in [self.REV_LABEL_COL, self.REV_LABEL_IND_COL, 
-                        self.REV_DATE_COL, self.REV_NOTE_COL]:
-            if comp_var not in comp_df: comp_df[comp_var] = None
 
         # Save comparison file to class instance and instantiate other relvant variables
         self.comp_df = comp_df
@@ -175,8 +176,13 @@ class rlr:
         # Sets default index if nothing passed
         if comp_ind is None: comp_ind = self.curr_comp_pair_index
         # Verify that index is valid (ie in range of rows of comp_df)
-        index_in_range = (0 <= comp_ind <= len(self.comp_df)-1)
+        index_in_range = (0 <= comp_ind <= self.comp_df.shape[0]-1)
         assert index_in_range, f"Comparison index ({comp_ind}) is out of bounds"
+
+        # Check if this comparison pair was identified as having unfound ids
+        if self.comp_df.loc[comp_ind, self.REV_LABEL_IND_COL] == -1:
+            warnings.warn(f"This record pair (at index {comp_ind}) included ids that were not found in the data sets")
+            return None
 
         # Extract raw data associated with the comparison pair ids
         # TODO: Below code assumes id_vars has only one variable (need to generalize to multi-index)
@@ -238,7 +244,7 @@ class rlr:
         # First get the associated grouped data of the pair (and exit if not found)
         val_groups = self.get_comp_pair("grouped", comp_ind)
         if val_groups is None:
-            print("**** At least one ids was not found in the data sets of this pair of records ****")
+            print("**** At least one id was not found in the data sets of this pair of records ****")
             return
         # Set line width if not passed
         if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
