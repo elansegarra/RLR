@@ -4,6 +4,7 @@ import os, sys
 import warnings
 import datetime
 import json
+from math import isnan
 
 class rlr:
     """ RLR: Record Linkage Review
@@ -108,7 +109,7 @@ class rlr:
         if self.REV_LABEL_IND_COL not in comp_df:
             comp_df[self.REV_LABEL_IND_COL] = 0
         for comp_var in [self.REV_LABEL_COL, self.REV_DATE_COL, self.REV_NOTE_COL]:
-            if comp_var not in comp_df: comp_df[comp_var] = None
+            if comp_var not in comp_df: comp_df[comp_var] = ""
         
         # Check that id value pairs are found in the data files (assuming a positive threshhold)
         num_missing = 0
@@ -336,6 +337,10 @@ class rlr:
 
         # Prints the comparison of this pair of records
         self.print_full_comparison(comp_ind, line_width = line_width)
+        # Print a note if there is anything there
+        note = self.comp_df.loc[comp_ind, self.REV_NOTE_COL]
+        if (isinstance(note,str) and note!= "") or (isinstance(note,float) and not isnan(note)):
+            print(f"Note: {self.comp_df.loc[comp_ind, self.REV_NOTE_COL]}")
         # Print option choices
         print("Label Options:")
 
