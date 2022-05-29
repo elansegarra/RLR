@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import warnings
+import datetime
 
 class rlr:
     """ RLR: Record Linkage Review
@@ -115,6 +116,7 @@ class rlr:
         self.comp_df = comp_df
         self.curr_comp_pair_index = 0
         self.num_comparisons = self.comp_df.shape[0]
+        self.comp_pairs_file_path = comp_pairs_path
     
     def set_var_comp_schema(self, var_schema):
         """ Validate and load the variable comparison schema
@@ -265,9 +267,40 @@ class rlr:
     def get_label_choices(self):
         return self.label_choices
 
-    def save_comp_choice(self, choice, comp_pair_ind = None):
-        # Checks and saves the choice to the current comparison pair (of that specified by comp_pair_ind)
-        if choice not in self.comp_options:
-            raise NotImplementedError
-        else:
-            pass
+    def save_label(self, label, comp_ind = None, comp_pairs_path = None):
+        """ Validates and saves the label choice to the indicated comparison pair. 
+        
+            Args:
+                label: str
+                    The label that will be saved for this record pair (should be among label_choices)
+                comp_ind: int, optional
+                    Index (in comp_df) of the comparison pair the label is being applied to.
+                    If nothing is passed it assumes the user refers to curr_comp_pair_index
+                comp_pairs_path: string, optional
+                    Filename (and path) that the current version of the comp_df will be saved
+                    to. If nothing is passed it uses the same path as original comparison file
+        """
+        # Verifies that datasets and comparison files and choices have all been set
+        if (self.dataL is None) or (self.dataR is None) or (self.comp_df is None) or (self.label_choices is None):
+            warnings.warn("Cannot save a label when datasets, comparison pairs, and/or choices have not been set")
+            return
+
+        # Sets default comparison index and file path if nothing passed
+        if comp_ind is None: comp_ind = self.curr_comp_pair_index
+        if comp_pairs_path is None: comp_pairs_path = self.comp_pairs_file_path
+
+        # Check that label is valid and comp_ind is valid
+        assert label in self.label_choices, f"Label passed ({label}) is not among valid choices"
+        index_in_range = (0 <= comp_ind <= self.comp_df.shape[0]-1)
+        assert index_in_range, f"Comparison index ({comp_ind}) is out of bounds"
+
+        # Update comparison df with the label (and associated columns)
+        self.comp_df.loc[comp_ind,self.REV_LABEL_COL] = label
+        self.comp_df.loc[comp_ind,self.REV_LABEL_IND_COL] = 1
+        self.comp_df.loc[comp_ind,self.REV_DATE_COL] = datetime.datetime.now()
+
+        # Check file format and save file accordingly
+        data_ext = os.path.splitext(comp_pairs_path)[1]
+        if      data_ext == ".csv":   self.comp_df.to_csv(comp_pairs_path, index = False)
+        elif    data_ext == ".dta":   self.comp_df.to_stata(comp_pairs_path, write_index = False)
+        else:   raise NotImplementedError(f"Filetype of {data_ext} must be either csv or dta")
