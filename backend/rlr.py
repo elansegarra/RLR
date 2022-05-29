@@ -4,6 +4,10 @@ import os
 import warnings
 
 class rlr:
+    """ RLR: Record Linkage Review
+        This class functions as the backend for reviewing and labeling pairs
+        of potential links between two loaded datasets.
+    """
     REV_LABEL_COL = "rlr_label"
     REV_LABEL_IND_COL = "rlr_label_ind"
     REV_DATE_COL = "rlr_choice_date"
@@ -13,6 +17,7 @@ class rlr:
     def __init__(self):
         self.dataL = None
         self.dataR = None
+        self.comp_df = None
         self.ready_to_review = False
 
     def load_datasets(self, data_l_path, data_r_path, id_vars_l, id_vars_r):
@@ -124,33 +129,81 @@ class rlr:
         assert self.dataR is not None, "Load data files before loading a comparison schema"
 
         # Iterate through variable groups and validate each
-            for var_group in var_schema:
+        for var_group in var_schema:
             # Verify that var_group is properly structured
-                assert 'name' in var_group, f"No 'name' key found in {var_group}"
-                assert 'lvars' in var_group, f"No 'lvars' key found in {var_group}"
-                assert 'rvars' in var_group, f"No 'rvars' key found in {var_group}"
+            assert 'name' in var_group, f"No 'name' key found in {var_group}"
+            assert 'lvars' in var_group, f"No 'lvars' key found in {var_group}"
+            assert 'rvars' in var_group, f"No 'rvars' key found in {var_group}"
             # Verify that lvars and rvars in var_group exist in the datasets
             ids_exist = pd.Series(var_group['lvars']).isin(self.dataL.columns).all()
             assert  ids_exist, f"Schema variables ({var_group['lvars']}) not found in the left data set"
             ids_exist = pd.Series(var_group['rvars']).isin(self.dataR.columns).all()
             assert  ids_exist, f"Schema variables ({var_group['rvars']}) not found in the right data set"
         # Save the variable schema to the class instance
-            self.var_schema = var_schema
+        self.var_schema = var_schema
 
     def set_label_choices(self, label_choices):
         """ Set the label choices (by passing a list of strings) """ 
-            # Verify that comp_options is a list of strings
+        # Verify that comp_options is a list of strings
         assert isinstance(label_choices, list), f"The object passed to 'label_choices' is not a list"
-        self.comp_options = [str(opt) for opt in label_choices]
+        self.label_choices = [str(opt) for opt in label_choices]
 
-    def get_curr_comp_pair(self):
-        return self.comp_pairs[self.curr_comp_pair_index]
+    def get_comp_pair(self, raw_or_grouped, comp_ind = None):
+        """ Returns a dictionary of the data in the current comparison pair
+            
+        Args:
+            raw_or_grouped: string (either "raw" or "grouped")
+                Indicates whether to return the raw data (i.e. a dictionary of dictionaries 
+                of the values associated with each record) or grouped data (i.e. a list of 
+                dictionaries where each dictionaries corresponds with the variable group defined
+                in var_schema)
+            comp_ind: int, optional
+                Integer index of the comparison pair (in comp_df) to return data from. If 
+                it is not passed, then it defaults to the curr_comp_pair_index
+        Returns: 
+            If "raw" -> dictionary with two keys ('l_rec' and 'r_rec')
+            If "grouped" -> list of dictionaries where each dict has three 
+                                keys ('name', 'lvar_values', and 'rvar_values')
+        """
+        # Verify that data sets and comparison sets have been loaded
+        assert self.dataL is not None, "Load data files before getting a comparison pair"
+        assert self.dataR is not None, "Load data files before getting a comparison pair"
+        assert self.comp_df is not None, "Load comparison data file before getting a comparison pair"
 
-    def get_var_schema(self):
+        # Sets default index if nothing passed
+        if comp_ind is None: comp_ind = self.curr_comp_pair_index
+        # Verify that index is valid (ie in range of rows of comp_df)
+        index_in_range = (0 <= comp_ind <= len(self.comp_df)-1)
+        assert index_in_range, f"Comparison index ({comp_ind}) is out of bounds"
+
+        # Extract raw data associated with the comparison pair ids
+        # TODO: Below code assumes id_vars has only one variable (need to generalize to multi-index)
+        l_id = self.comp_df.loc[comp_ind,self.id_vars_l[0]]
+        r_id = self.comp_df.loc[comp_ind,self.id_vars_r[0]]
+        l_rec_data = self.dataL.loc[l_id].to_dict()
+        r_rec_data = self.dataR.loc[r_id].to_dict()
+
+        # Check requested data format and process accordingly
+        if raw_or_grouped == "raw":
+            return {'l_rec': l_rec_data, 'r_rec': r_rec_data}
+        elif raw_or_grouped == "grouped":
+            # Process raw data into data grouped according to var_schema
+            rec_data_grouped = []
+            for var_group in self.var_schema:
+                # Get values of each variable in the group from the data records
+                var_group_data = {'name':var_group['name'],
+                                'lvals': [l_rec_data[var] for var in var_group['lvars']],
+                                'rvals': [r_rec_data[var] for var in var_group['rvars']]}
+                rec_data_grouped.append(var_group_data)
+            return rec_data_grouped
+        else:
+            raise NotImplementedError(f"")
+
+    def get_var_comp_schema(self):
         return self.var_schema
     
-    def get_comp_options(self):
-        return self.comp_options
+    def get_label_choices(self):
+        return self.label_choices
 
     def save_comp_choice(self, choice, comp_pair_ind = None):
         # Checks and saves the choice to the current comparison pair (of that specified by comp_pair_ind)
