@@ -118,6 +118,33 @@ class rlr:
         self.num_comparisons = self.comp_df.shape[0]
         self.comp_pairs_file_path = comp_pairs_path
     
+    def load_review_packet(self, rev_packet):
+        """ Loads all the review parameters found in the passed review packet 
+        
+            Args:
+                rev_packet: dict containing review parameters
+                    The dict should have the following keys and values:
+                    'file_L': str path to the first data file 
+                    'file_L_ids': str or list of str indicating the row ids in file_L
+                    'file_R': str path to the second data file 
+                    'file_R_ids': str or list of str indicating the row ids in file_R
+                    'file_comps': str path to the data file containing record pairs
+                    'var_group_schema': dict of variable comparisons (see set_var_comp_schema)
+                    'label_choices': list of str that make up the label choices
+        """
+        # Validate the structure of the review packet file 
+        nec_keys = ['file_L', 'file_L_ids', 'file_R', 'file_R_ids', 'file_comps', 
+                        'var_group_schema', 'label_choices']
+        for key in nec_keys:
+            assert key in rev_packet, f"Review packet must include '{key}' as a key"
+        
+        # Load the various parts from the review packet file
+        self.load_datasets(rev_packet['file_L'], rev_packet['file_R'], 
+                            rev_packet['file_L_ids'], rev_packet['file_R_ids'])
+        self.load_comp_pairs(rev_packet['file_comps'])
+        self.set_var_comp_schema(rev_packet['var_group_schema'])
+        self.set_label_choices(rev_packet['label_choices'])
+
     def set_var_comp_schema(self, var_schema):
         """ Validate and load the variable comparison schema
 
