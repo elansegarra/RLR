@@ -11,7 +11,7 @@ class rlr:
     """
     REV_LABEL_COL = "rlr_label"
     REV_LABEL_IND_COL = "rlr_label_ind"
-    REV_DATE_COL = "rlr_choice_date"
+    REV_DATE_COL = "rlr_modified"
     REV_NOTE_COL = "rlr_note"
     COMP_EXIST_THRESH = 0.8  # Set to 0 to skip checking if all comp pairs exist in data
     COMP_PRINT_COL_WEIGHT = [0.4, 0.2, 0.4]
@@ -327,6 +327,67 @@ class rlr:
         option_choice = input("Enter Option: ")
         return option_choice
 
+    def review_comparisons(self, comp_inds, incl_options = None, line_width = None,
+                            comp_pairs_path = None):
+        """ Displays a single comparison and gathers option input
+        
+            Args:
+                comp_inds: int or list of ints
+                    Indices (in comp_df) of the comparison pairs to be reviewed.
+                incl_options: list of strings, optional
+                    Indicates other options ("skip", "note", "exit") to include among choices
+                line_width: int, optional
+                    Line width (in number of characters) for printing comparisons
+                comp_pairs_path: string, optional
+                    Filename (and path) that the current version of the comp_df will be saved
+                    to. If nothing is passed it uses the same path as original comparison file
+
+        """
+        # Verifies that datasets and comparison files and choices have all been set
+        if (self.dataL is None) or (self.dataR is None) or (self.comp_df is None) or (self.label_choices is None):
+            warnings.warn("Cannot review a comparison when datasets, comparison pairs, and/or choices have not been set")
+            return None
+
+        # Sets default line_width
+        if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
+
+        # Iterate over each passed comparison index
+        for comp_ind in comp_inds:
+            # Verify this is a valid index (skip otherwise)
+            index_in_range = (0 <= comp_ind <= self.comp_df.shape[0]-1)
+            if not index_in_range:
+                print(f"The passed index ({comp_ind}) is not valid. Skipping")
+                print("*"*line_width+"\n")
+                continue
+            # Print comparison and gather input (until valid choice given)
+            label_choice_tags = list(map(str,range(1,len(self.label_choices)+1)))
+            valid_choices = label_choice_tags + ['S', 's', 'N', 'n', 'E', 'e']
+            comp_choice = self.gather_comparison_input(comp_ind, incl_options = ['skip', 'note', 'exit'],
+                                                    line_width = line_width)
+            while comp_choice not in valid_choices:
+                print("*** Invalid Choice ***")
+                comp_choice = self.gather_comparison_input(comp_ind, 
+                                                    incl_options = ['skip', 'note', 'exit'],
+                                                    line_width = line_width)
+            
+            # Process choice
+            if comp_choice in label_choice_tags:
+                self.save_label(self.label_choices[int(comp_choice)-1], 
+                                comp_ind = comp_ind,
+                                comp_pairs_path = comp_pairs_path)
+            elif comp_choice in ['S', 's']:
+                continue
+            elif comp_choice in ['E', 'e']:
+                break
+            elif comp_choice in ['N', 'n']:
+                note_text = input("Enter note: ")
+                self.comp_df.loc[comp_ind,self.REV_NOTE_COL] = note_text
+                self.comp_df.loc[comp_ind,self.REV_DATE_COL] = datetime.datetime.now()
+                self.save_comp_df(comp_pairs_path = comp_pairs_path)
+            else:
+                raise NotImplementedError("Impossible! An invalid comp_choice ({comp_choice}) got through!?")
+
+            print("*"*line_width+"\n")
     
     def save_comp_df(self, comp_pairs_path = None):
         """ Saves the current value of the comparison dataframe """
