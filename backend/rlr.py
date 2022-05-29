@@ -108,29 +108,40 @@ class rlr:
         self.curr_comp_pair_index = 0
         self.num_comparisons = self.comp_df.shape[0]
     
-    def load_comp_schema(self, var_schema = None, comp_options = None):
-        """ Validate and load either the variable schema or comparison options
+    def set_var_comp_schema(self, var_schema):
+        """ Validate and load the variable comparison schema
 
         Args:
-            var_schema: (list of dicts) where each dictionary has 3 keys
+            var_schema: list of dicts
+                Each element represents the group of variables that should be compared
+                across the data sets. Each dictionary in the list has 3 keys
                 'name': (str) name of variable group
                 'lvars': (list of str) column names of variable in left data set
                 'rvars': (list of str) column names of variable in right data set
-            comp_options: (list of str) indicates the possible choice for a match determination
         """
-        if var_schema is not None:
-            # Verify that var_schema is properly structured
+        # Check that data has already been loaded
+        assert self.dataL is not None, "Load data files before loading a comparison schema"
+        assert self.dataR is not None, "Load data files before loading a comparison schema"
+
+        # Iterate through variable groups and validate each
             for var_group in var_schema:
+            # Verify that var_group is properly structured
                 assert 'name' in var_group, f"No 'name' key found in {var_group}"
                 assert 'lvars' in var_group, f"No 'lvars' key found in {var_group}"
                 assert 'rvars' in var_group, f"No 'rvars' key found in {var_group}"
+            # Verify that lvars and rvars in var_group exist in the datasets
+            ids_exist = pd.Series(var_group['lvars']).isin(self.dataL.columns).all()
+            assert  ids_exist, f"Schema variables ({var_group['lvars']}) not found in the left data set"
+            ids_exist = pd.Series(var_group['rvars']).isin(self.dataR.columns).all()
+            assert  ids_exist, f"Schema variables ({var_group['rvars']}) not found in the right data set"
+        # Save the variable schema to the class instance
             self.var_schema = var_schema
-        if comp_options is not None:
-            # Verify that comp_options is a list of strings
-            assert isinstance(comp_options, list), f"The object passed to 'comp_options' is not a list"
-            self.comp_options = [str(opt) for opt in comp_options]
 
-        pass
+    def set_label_choices(self, label_choices):
+        """ Set the label choices (by passing a list of strings) """ 
+            # Verify that comp_options is a list of strings
+        assert isinstance(label_choices, list), f"The object passed to 'label_choices' is not a list"
+        self.comp_options = [str(opt) for opt in label_choices]
 
     def get_curr_comp_pair(self):
         return self.comp_pairs[self.curr_comp_pair_index]
