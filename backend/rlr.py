@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
-import os
+import os, sys
 import warnings
 import datetime
+import json
 
 class rlr:
     """ RLR: Record Linkage Review
@@ -15,13 +16,24 @@ class rlr:
     REV_NOTE_COL = "rlr_note"
     COMP_EXIST_THRESH = 0.8  # Set to 0 to skip checking if all comp pairs exist in data
     COMP_PRINT_COL_WEIGHT = [0.4, 0.2, 0.4]
-    COMP_DEFAULT_LINE_WIDTH = 60
+    COMP_DEFAULT_LINE_WIDTH = 80
 
-    def __init__(self):
+    def __init__(self, rev_packet_path = None):
         self.dataL = None
         self.dataR = None
         self.comp_df = None
-        self.ready_to_review = False
+
+        # Load all the parameters in the review packet if passed
+        if rev_packet_path is not None:
+            # Read the parameter file
+            with open(rev_packet_path, 'r') as openfile:
+                rev_packet = json.load(openfile)
+            # Load the parameters
+            self.load_review_packet(rev_packet)
+            # Start a review assuming that comp_inds were passed
+            if 'comp_inds' in rev_packet:
+                self.review_comparisons(rev_packet['comp_inds'],
+                                        incl_options=['skip', 'note', 'exit'])
 
     def load_datasets(self, data_l_path, data_r_path, id_vars_l, id_vars_r):
         """ Loads two data sets and specifies the id variables in each 
@@ -460,3 +472,15 @@ class rlr:
 
         # Save the comparison dataframe
         self.save_comp_df(comp_pairs_path = comp_pairs_path)
+
+def main():
+    # Check if a file was passed
+    if len(sys.argv) > 1:
+        # Open the configuration file with the review parameters
+        rev_packet_path = sys.argv[1]
+        
+        # Load the review parameters and start reviewing (assuming they were passed)
+        rev = rlr(rev_packet_path)
+
+if __name__ == "__main__":
+    main()
