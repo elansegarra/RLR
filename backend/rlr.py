@@ -275,7 +275,7 @@ class rlr:
                     Index (in comp_df) of the comparison pair to be review. If nothing 
                     is passed it assumes the user refers to curr_comp_pair_index
                 incl_options: list of strings, optional
-                    Indicates other options ("skip", "exit") to include among choices
+                    Indicates other options ("skip", "note", "exit") to include among choices
                 line_width: int, optional
                     Line width (in number of characters) for printing comparisons
             
@@ -316,9 +316,11 @@ class rlr:
             options_line = ""
             print("Other Options:")
             if "skip" in incl_options:
-                options_line += "(S) Skip"
+                options_line += "(S) Skip "
+            if "note" in incl_options:
+                options_line += "(N) Note "
             if "exit" in incl_options:
-                options_line += "(E) Exit"
+                options_line += "(E) Exit "
             print(options_line)
         
         # Gather option choice from user
