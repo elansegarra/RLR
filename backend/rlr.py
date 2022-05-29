@@ -327,6 +327,18 @@ class rlr:
         option_choice = input("Enter Option: ")
         return option_choice
 
+    
+    def save_comp_df(self, comp_pairs_path = None):
+        """ Saves the current value of the comparison dataframe """
+        # Sets default file path if nothing passed
+        if comp_pairs_path is None: comp_pairs_path = self.comp_pairs_file_path
+
+        # Check file format and save file accordingly
+        data_ext = os.path.splitext(comp_pairs_path)[1]
+        if      data_ext == ".csv":   self.comp_df.to_csv(comp_pairs_path, index = False)
+        elif    data_ext == ".dta":   self.comp_df.to_stata(comp_pairs_path, write_index = False)
+        else:   raise NotImplementedError(f"Filetype of {data_ext} must be either csv or dta")
+
     def save_label(self, label, comp_ind = None, comp_pairs_path = None):
         """ Validates and saves the label choice to the indicated comparison pair. 
         
@@ -345,9 +357,8 @@ class rlr:
             warnings.warn("Cannot save a label when datasets, comparison pairs, and/or choices have not been set")
             return
 
-        # Sets default comparison index and file path if nothing passed
+        # Sets default comparison index
         if comp_ind is None: comp_ind = self.curr_comp_pair_index
-        if comp_pairs_path is None: comp_pairs_path = self.comp_pairs_file_path
 
         # Check that label is valid and comp_ind is valid
         assert label in self.label_choices, f"Label passed ({label}) is not among valid choices"
@@ -359,8 +370,5 @@ class rlr:
         self.comp_df.loc[comp_ind,self.REV_LABEL_IND_COL] = 1
         self.comp_df.loc[comp_ind,self.REV_DATE_COL] = datetime.datetime.now()
 
-        # Check file format and save file accordingly
-        data_ext = os.path.splitext(comp_pairs_path)[1]
-        if      data_ext == ".csv":   self.comp_df.to_csv(comp_pairs_path, index = False)
-        elif    data_ext == ".dta":   self.comp_df.to_stata(comp_pairs_path, write_index = False)
-        else:   raise NotImplementedError(f"Filetype of {data_ext} must be either csv or dta")
+        # Save the comparison dataframe
+        self.save_comp_df(comp_pairs_path = comp_pairs_path)
