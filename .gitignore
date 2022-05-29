@@ -8,3 +8,4 @@ __pycache__/
 # everything in the temporary and image folder
 tmp/
 user/
+data/
