@@ -267,6 +267,64 @@ class rlr:
     def get_label_choices(self):
         return self.label_choices
 
+    def gather_comparison_input(self, comp_ind = None, incl_options = None, line_width = None):
+        """ Displays a single comparison and gathers option input
+        
+            Args:
+                comp_ind: int, optional
+                    Index (in comp_df) of the comparison pair to be review. If nothing 
+                    is passed it assumes the user refers to curr_comp_pair_index
+                incl_options: list of strings, optional
+                    Indicates other options ("skip", "exit") to include among choices
+                line_width: int, optional
+                    Line width (in number of characters) for printing comparisons
+            
+            Returns: string or None
+                If an option is chosen it will return the number (for a label) or the
+                letter associated with the incl_options (if present)
+
+        """
+        # Verifies that datasets and comparison files and choices have all been set
+        if (self.dataL is None) or (self.dataR is None) or (self.comp_df is None) or (self.label_choices is None):
+            warnings.warn("Cannot review a comparison when datasets, comparison pairs, and/or choices have not been set")
+            return None
+
+        # Sets default comparison index (and line_width) and checks if valid 
+        if comp_ind is None: comp_ind = self.curr_comp_pair_index
+        index_in_range = (0 <= comp_ind <= self.comp_df.shape[0]-1)
+        assert index_in_range, f"Comparison index ({comp_ind}) is out of bounds"
+        if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
+
+        # Prints the comparison of this pair of records
+        self.print_full_comparison(comp_ind, line_width = line_width)
+        # Print option choices
+        print("Label Options:")
+
+        # Assemble and print input options
+        options_line = ""
+        for i in range(1,len(self.label_choices)+1):
+            label_option = f"({i}) {self.label_choices[i-1]} "
+            # Go to next line if too long
+            if (len(options_line)+len(label_option)) > line_width:
+                print(options_line)
+                options_line = ""
+            options_line += label_option
+        print(options_line)
+
+        # Print additional options if specified
+        if incl_options is not None:
+            options_line = ""
+            print("Other Options:")
+            if "skip" in incl_options:
+                options_line += "(S) Skip"
+            if "exit" in incl_options:
+                options_line += "(E) Exit"
+            print(options_line)
+        
+        # Gather option choice from user
+        option_choice = input("Enter Option: ")
+        return option_choice
+
     def save_label(self, label, comp_ind = None, comp_pairs_path = None):
         """ Validates and saves the label choice to the indicated comparison pair. 
         
