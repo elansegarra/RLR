@@ -13,6 +13,8 @@ class rlr:
     REV_DATE_COL = "rlr_choice_date"
     REV_NOTE_COL = "rlr_note"
     COMP_EXIST_THRESH = 0.8  # Set to 0 to skip checking if all comp pairs exist in data
+    COMP_PRINT_COL_WEIGHT = [0.4, 0.2, 0.4]
+    COMP_DEFAULT_LINE_WIDTH = 60
 
     def __init__(self):
         self.dataL = None
@@ -202,6 +204,58 @@ class rlr:
     def get_var_comp_schema(self):
         return self.var_schema
     
+    def print_comp_var_group(self, var_group_data, line_width = None):
+        """ Prints the variable group data in 3 side by side columns """
+        if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
+        # Calculate the column widths and number or rows needed
+        l_col_width = int(line_width*self.COMP_PRINT_COL_WEIGHT[0])
+        m_col_width = int(line_width*self.COMP_PRINT_COL_WEIGHT[1])
+        r_col_width = int(line_width*self.COMP_PRINT_COL_WEIGHT[2])
+        row_num = max(len(var_group_data['lvals']), len(var_group_data['rvals']))
+
+        # Print each line (or skip if nothing to print for that column)
+        for i in range(row_num):
+            line_text = ""
+            # Append left variable value right aligned (if it exists)
+            if i < len(var_group_data['lvals']):
+                line_text += str(var_group_data['lvals'][i]).rjust(l_col_width)
+            else: line_text += " "*l_col_width
+
+            if i == 0 : # Print group name on first line
+                line_text += str(var_group_data['name']).center(m_col_width)
+            else: line_text += " "*m_col_width
+
+            if i < len(var_group_data['rvals']):
+                line_text += str(var_group_data['rvals'][i]).ljust(r_col_width)
+            else: line_text += " "*r_col_width
+
+            # Print compiled line of text
+            print(line_text)
+
+    def print_full_comparison(self, comp_ind, line_width = None):
+        """ Prints out the full comparison (based on var_schema) between the
+            records identified in the passed index (of comp_df)"""
+        # First get the associated grouped data of the pair (and exit if not found)
+        val_groups = self.get_comp_pair("grouped", comp_ind)
+        if val_groups is None:
+            print("**** At least one ids was not found in the data sets of this pair of records ****")
+            return
+        # Set line width if not passed
+        if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
+
+        # Print headings (after calculating column widths)
+        l_col_width = int(line_width*self.COMP_PRINT_COL_WEIGHT[0])
+        m_col_width = int(line_width*self.COMP_PRINT_COL_WEIGHT[1])
+        r_col_width = int(line_width*self.COMP_PRINT_COL_WEIGHT[2])
+        print("Left Data Record".rjust(l_col_width) + "Var. Group".center(m_col_width) +
+                "Right Data Record".ljust(r_col_width))
+
+        # Print each group of the variable groups found (with lines in between)
+        for val_group in val_groups:
+            print("-"*line_width)
+            self.print_comp_var_group(val_group, line_width=line_width)
+        print("-"*line_width)
+
     def get_label_choices(self):
         return self.label_choices
 
