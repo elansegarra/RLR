@@ -380,6 +380,12 @@ class rlr:
         assert index_in_range, f"Comparison index ({comp_ind}) is out of bounds"
         if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
 
+        # Prints a heading for comparison
+        head_text = f"Record Pair {self.curr_comp_pair_index}/{self.comp_df.shape[0]-1}"
+        print("*"*line_width)
+        print("*"+head_text.center(line_width-2)+"*")
+        print("*"*line_width)
+
         # Prints the comparison of this pair of records
         self.CL_print_comparison_full(comp_ind, line_width = line_width)
         # Print a note if there is anything there
