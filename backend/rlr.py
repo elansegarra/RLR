@@ -304,18 +304,31 @@ class rlr:
             self.CL_print_comparison_var_group(val_group, line_width=line_width)
         print("-"*line_width)
 
-    def CL_print_input_options(self, addtl_options = None, line_width = None):
-        """ Prints option choices (label options and addtl options) to the command line """
+    def CL_print_input_options(self, sel_label = None, addtl_options = None, line_width = None):
+        """ Prints option choices (label options and addtl options) to the command line 
+        
+            Args:
+                sel_label: int (0 for no label, and 1,2,3... for indices of self.label_choices
+                addtl_options: list of strings, optional
+                    Indicates other options ("skip", "note", "exit") to include among choices
+                line_width: int, optional
+                    Line width (in number of characters) for printing comparisons
+        """
         # Sets default line width
         if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
 
-        # Print option choices
-        print("Label Options:")
+        # Print heading for option choices 
+        print("Label Options (<> = current label):")
 
-        # Assemble and print input options
+        # Assemble and print input options (temporarily adding "No Label")
         options_line = ""
-        for i in range(1,len(self.label_choices)+1):
-            label_option = f"({i}) {self.label_choices[i-1]} "
+        temp_label_choices = ["No Label"] + self.label_choices
+        for i in range(len(temp_label_choices)):
+            # Add label option (and selection indication)
+            if i == sel_label:
+                label_option = f"<{i}> {temp_label_choices[i]} "
+            else:
+                label_option = f"({i}) {temp_label_choices[i]} "
             # Go to next line if too long
             if (len(options_line)+len(label_option)) > line_width:
                 print(options_line)
@@ -375,8 +388,12 @@ class rlr:
         if (isinstance(note,str) and note!= "") or (isinstance(note,float) and not isnan(note)):
             print(f"Note: {self.comp_df.loc[comp_ind, self.REV_NOTE_COL]}")
 
-        # Print the option choices
-        self.CL_print_input_options(addtl_options = addtl_options, line_width = line_width)
+        # Print the option choices (and highlights the current label if one is there)
+        curr_label = self.comp_df.loc[comp_ind, self.REV_LABEL_COL]
+        if curr_label in self.label_choices: curr_label = self.label_choices.index(curr_label)+1
+        else:                                curr_label = 0
+        self.CL_print_input_options(sel_label = curr_label, addtl_options = addtl_options, 
+                                        line_width = line_width)
 
         # Gather option choice from user
         option_choice = input("Enter Option: ")
@@ -416,7 +433,7 @@ class rlr:
                 continue
             # Print comparison and gather input (until valid choice given)
             label_choice_tags = list(map(str,range(1,len(self.label_choices)+1)))
-            valid_choices = label_choice_tags + ['S', 's', 'N', 'n', 'E', 'e']
+            valid_choices = label_choice_tags + ['0', 'S', 's', 'N', 'n', 'E', 'e']
             comp_choice = self.CL_comparison_query(comp_ind, addtl_options = ['skip', 'note', 'exit'],
                                                     line_width = line_width)
             while comp_choice not in valid_choices:
@@ -426,23 +443,28 @@ class rlr:
                                                     line_width = line_width)
             
             # Process choice
-            if comp_choice in label_choice_tags:
+            if comp_choice == '0':
+                self.save_label("", comp_ind = comp_ind, comp_pairs_path = comp_pairs_path)
+                print("*"*line_width+"\n")
+            elif comp_choice in label_choice_tags:
                 self.save_label(self.label_choices[int(comp_choice)-1], 
                                 comp_ind = comp_ind,
                                 comp_pairs_path = comp_pairs_path)
+                print("*"*line_width+"\n")
             elif comp_choice in ['S', 's']:
+                print("*"*line_width+"\n")
                 continue
             elif comp_choice in ['E', 'e']:
+                print("*"*line_width+"\n")
                 break
             elif comp_choice in ['N', 'n']:
                 note_text = input("Enter note: ")
                 self.comp_df.loc[comp_ind,self.REV_NOTE_COL] = note_text
                 self.comp_df.loc[comp_ind,self.REV_DATE_COL] = datetime.datetime.now()
                 self.save_comp_df(comp_pairs_path = comp_pairs_path)
+                print("*"*line_width+"\n")
             else:
                 raise NotImplementedError("Impossible! An invalid comp_choice ({comp_choice}) got through!?")
-
-            print("*"*line_width+"\n")
     
     def save_comp_df(self, comp_pairs_path = None):
         """ Saves the current value of the comparison dataframe """
@@ -477,7 +499,7 @@ class rlr:
         if comp_ind is None: comp_ind = self.curr_comp_pair_index
 
         # Check that label is valid and comp_ind is valid
-        assert label in self.label_choices, f"Label passed ({label}) is not among valid choices"
+        assert label in [""]+self.label_choices, f"Label passed ({label}) is not among valid choices"
         index_in_range = (0 <= comp_ind <= self.comp_df.shape[0]-1)
         assert index_in_range, f"Comparison index ({comp_ind}) is out of bounds"
 
