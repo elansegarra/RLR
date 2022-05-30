@@ -18,6 +18,8 @@ class rlr:
     COMP_EXIST_THRESH = 0.8  # Set to 0 to skip checking if all comp pairs exist in data
     COMP_PRINT_COL_WEIGHT = [0.4, 0.2, 0.4]
     COMP_DEFAULT_LINE_WIDTH = 80
+    ADDTL_OPTION_TEXTS = ["(P) Previous", "(N) Next", "(G) Go to",  "(A) Annotate", "(E) Exit"]
+    ADDTL_OPTION_TAGS = [text[1].lower() for text in ADDTL_OPTION_TEXTS]
 
     def __init__(self, rev_packet_path = None):
         self.dataL = None
@@ -33,8 +35,7 @@ class rlr:
             self.load_review_packet(rev_packet)
             # Start a review assuming that comp_inds were passed
             if 'comp_inds' in rev_packet:
-                self.review_comparisons(rev_packet['comp_inds'],
-                                        addtl_options=['skip', 'note', 'exit'])
+                self.review_comparisons(rev_packet['comp_inds'])
 
     def load_datasets(self, data_l_path, data_r_path, id_vars_l, id_vars_r):
         """ Loads two data sets and specifies the id variables in each 
@@ -304,13 +305,11 @@ class rlr:
             self.CL_print_comparison_var_group(val_group, line_width=line_width)
         print("-"*line_width)
 
-    def CL_print_input_options(self, sel_label = None, addtl_options = None, line_width = None):
+    def CL_print_input_options(self, sel_label = None, line_width = None):
         """ Prints option choices (label options and addtl options) to the command line 
         
             Args:
                 sel_label: int (0 for no label, and 1,2,3... for indices of self.label_choices
-                addtl_options: list of strings, optional
-                    Indicates other options ("skip", "note", "exit") to include among choices
                 line_width: int, optional
                     Line width (in number of characters) for printing comparisons
         """
@@ -336,22 +335,21 @@ class rlr:
             options_line += label_option
         print(options_line)
 
-        # Print additional options if specified
-        if addtl_options is not None:
-            options_line = ""
-            print("Other Options:")
-            if "skip" in addtl_options:
-                options_line += "(S) Skip "
-            if "note" in addtl_options:
-                options_line += "(N) Note "
-            if "exit" in addtl_options:
-                options_line += "(E) Exit "
-            print(options_line)
+        # Print additional options
+        print("Other Options:")
+        options_line = ""
+        for addtl_option in self.ADDTL_OPTION_TEXTS:
+            # Go to next line if too long
+            if (len(options_line)+len(addtl_option)) > line_width:
+                print(options_line)
+                options_line = ""
+            options_line += addtl_option + ' '
+        print(options_line)
 
     def get_label_choices(self):
         return self.label_choices
 
-    def CL_comparison_query(self, comp_ind = None, addtl_options = None, line_width = None):
+    def CL_comparison_query(self, comp_ind = None, line_width = None):
         """ Prints a full comparison, to the command line, of the passed comparison index and 
             gathers (validated) option input and returns the result 
         
@@ -359,15 +357,13 @@ class rlr:
                 comp_ind: int, optional
                     Index (in comp_df) of the comparison pair to be review. If nothing 
                     is passed it assumes the user refers to curr_comp_pair_index
-                addtl_options: list of strings, optional
-                    Indicates other options ("skip", "note", "exit") to include among choices
                 line_width: int, optional
                     Line width (in number of characters) for printing comparisons
             
             Returns: string or None
                 If a label option is chosen it will return the associated number (which is +1 of
-                the associated index in self.label_choices) or if another option is choesen it
-                returns the letter associated with the addtl_options (if present)
+                the associated index in self.label_choices) or if another option is chosen it
+                returns the letter associated with option in ADDTL_OPTION_TEXTS
 
         """
         # Verifies that datasets and comparison files and choices have all been set
@@ -392,22 +388,18 @@ class rlr:
         curr_label = self.comp_df.loc[comp_ind, self.REV_LABEL_COL]
         if curr_label in self.label_choices: curr_label = self.label_choices.index(curr_label)+1
         else:                                curr_label = 0
-        self.CL_print_input_options(sel_label = curr_label, addtl_options = addtl_options, 
-                                        line_width = line_width)
+        self.CL_print_input_options(sel_label = curr_label, line_width = line_width)
 
         # Gather option choice from user
         option_choice = input("Enter Option: ")
         return option_choice
 
-    def review_comparisons(self, comp_inds, addtl_options = None, line_width = None,
-                            comp_pairs_path = None):
+    def review_comparisons(self, comp_inds, line_width = None, comp_pairs_path = None):
         """ Displays a single comparison and gathers option input
         
             Args:
                 comp_inds: int or list of ints
-                    Indices (in comp_df) of the comparison pairs to be reviewed.
-                addtl_options: list of strings, optional
-                    Indicates other options ("skip", "note", "exit") to include among choices
+                    Indices (in comp_df) of the comparison pairs to be reviewed
                 line_width: int, optional
                     Line width (in number of characters) for printing comparisons
                 comp_pairs_path: string, optional
@@ -433,14 +425,11 @@ class rlr:
                 continue
             # Print comparison and gather input (until valid choice given)
             label_choice_tags = list(map(str,range(1,len(self.label_choices)+1)))
-            valid_choices = label_choice_tags + ['0', 'S', 's', 'N', 'n', 'E', 'e']
-            comp_choice = self.CL_comparison_query(comp_ind, addtl_options = ['skip', 'note', 'exit'],
-                                                    line_width = line_width)
+            valid_choices = ['0'] + label_choice_tags + self.ADDTL_OPTION_TAGS
+            comp_choice = self.CL_comparison_query(comp_ind, line_width = line_width).lower()
             while comp_choice not in valid_choices:
                 print("*** Invalid Choice ***")
-                comp_choice = self.CL_comparison_query(comp_ind, 
-                                                    addtl_options = ['skip', 'note', 'exit'],
-                                                    line_width = line_width)
+                comp_choice = self.CL_comparison_query(comp_ind, line_width = line_width).lower()
             
             # Process choice
             if comp_choice == '0':
@@ -451,14 +440,14 @@ class rlr:
                                 comp_ind = comp_ind,
                                 comp_pairs_path = comp_pairs_path)
                 print("*"*line_width+"\n")
-            elif comp_choice in ['S', 's']:
+            elif comp_choice == 'n':
                 print("*"*line_width+"\n")
                 continue
-            elif comp_choice in ['E', 'e']:
+            elif comp_choice == 'e':
                 print("*"*line_width+"\n")
                 break
-            elif comp_choice in ['N', 'n']:
-                note_text = input("Enter note: ")
+            elif comp_choice == 'a':
+                note_text = input("Enter note (replaces current note): ")
                 self.comp_df.loc[comp_ind,self.REV_NOTE_COL] = note_text
                 self.comp_df.loc[comp_ind,self.REV_DATE_COL] = datetime.datetime.now()
                 self.save_comp_df(comp_pairs_path = comp_pairs_path)
