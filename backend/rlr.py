@@ -31,11 +31,9 @@ class rlr:
             # Read the parameter file
             with open(rev_packet_path, 'r') as openfile:
                 rev_packet = json.load(openfile)
-            # Load the parameters
+            # Load the parameters in the parameter dictionary
             self.load_review_packet(rev_packet)
-            # Start a review assuming that comp_inds were passed
-            if 'comp_inds' in rev_packet:
-                self.review_comparisons(rev_packet['comp_inds'])
+            
 
     def load_datasets(self, data_l_path, data_r_path, id_vars_l, id_vars_r):
         """ Loads two data sets and specifies the id variables in each 
@@ -105,6 +103,7 @@ class rlr:
         ids_are_unique = comp_df.set_index(all_ids).index.is_unique
         assert ids_are_unique, f"Id variables ({all_ids} do not uniquely identify records in comparison file"
         # comp_df.set_index(all_ids, inplace=True, drop=False)
+        comp_df.reset_index(inplace = True, drop = True) # Changes index to 0,1,2,....
 
         # Add comparison columns if not already there
         if self.REV_LABEL_IND_COL not in comp_df:
@@ -402,12 +401,62 @@ class rlr:
             
         return choice
 
-    def review_comparisons(self, comp_inds, line_width = None, comp_pairs_path = None):
-        """ Displays a single comparison and gathers option input
+    def CL_process_choice(self, comp_choice, comp_pairs_path = None):
+        """ Take appropriate action associated with passed choice
         
             Args:
-                comp_inds: int or list of ints
-                    Indices (in comp_df) of the comparison pairs to be reviewed
+                comp_choice: str
+                    The tag (ie single letter) associated with a label or other option
+                comp_pairs_path: string, optional
+                    Filename (and path) that the current version of the comp_df will be saved
+                    to. If nothing is passed it uses the same path as original comparison file
+
+        """
+        # Create list of tags associated with label choices and valid comp pair indices
+        label_choice_tags = list(map(str,range(1,len(self.label_choices)+1)))
+        valid_comp_indices = list(map(str,range(self.comp_df.shape[0])))
+
+        # Take action according to choice passed
+        if comp_choice == '0':  # No label chosen
+            self.save_label("", comp_ind = self.curr_comp_pair_index, 
+                                comp_pairs_path = comp_pairs_path)
+        elif comp_choice in label_choice_tags: # Label chosen
+            self.save_label(self.label_choices[int(comp_choice)-1], 
+                            comp_ind = self.curr_comp_pair_index,
+                            comp_pairs_path = comp_pairs_path)
+        elif comp_choice == 'p': # Previous comparison
+            # Check if this is first comparison pair or not (if not decrease by one)
+            if self.curr_comp_pair_index == 0:
+                print("** This was first comparison pair, can't go to previous **")
+            else:
+                self.curr_comp_pair_index -= 1
+        elif comp_choice == 'n': # Next comparison
+            # Check if this is last comparison pair or not (if not advance by one)
+            if self.curr_comp_pair_index == self.comp_df.shape[0]-1:
+                print("** This was final comparison pair, can't go to next **")
+            else:
+                self.curr_comp_pair_index += 1
+        elif comp_choice == 'g': # Go to another comparison
+            # Get index entry and check if valid (and go there if so)
+            go_to_index = input(f"Enter Index ({0}-{self.comp_df.shape[0]-1}):")
+            while go_to_index not in valid_comp_indices:
+                print(f"** This index is not valid, must be between 0 and {self.comp_df.shape[0]-1} **")
+                go_to_index = input(f"Enter Index ({0}-{self.comp_df.shape[0]-1}):")
+            self.curr_comp_pair_index = go_to_index
+        elif comp_choice == 'a': # Add a note to this comparison
+            note_text = input("Enter note (replaces current note): ")
+            self.comp_df.loc[self.curr_comp_pair_index,self.REV_NOTE_COL] = note_text
+            self.comp_df.loc[self.curr_comp_pair_index,self.REV_DATE_COL] = datetime.datetime.now()
+            self.save_comp_df(comp_pairs_path = comp_pairs_path)
+        elif comp_choice == 'e': # Exit (do nothing here)
+            return
+        else:
+            raise NotImplementedError("Impossible! An invalid comp_choice ({comp_choice}) got through!?")
+
+    def CL_review_comparisons(self, line_width = None, comp_pairs_path = None):
+        """ Start the command line reviewer using self.curr_comp_pair_index of self.comp_df
+        
+            Args:
                 line_width: int, optional
                     Line width (in number of characters) for printing comparisons
                 comp_pairs_path: string, optional
@@ -423,43 +472,25 @@ class rlr:
         # Sets default line_width
         if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
 
-        # Iterate over each passed comparison index
-        for comp_ind in comp_inds:
-            # Verify this is a valid index (skip otherwise)
-            index_in_range = (0 <= comp_ind <= self.comp_df.shape[0]-1)
-            if not index_in_range:
-                print(f"The passed index ({comp_ind}) is not valid. Skipping")
-                print("*"*line_width+"\n")
-                continue
-            # Print comparison and gather input (until valid choice given)
-            label_choice_tags = list(map(str,range(1,len(self.label_choices)+1)))
-            valid_choices = ['0'] + label_choice_tags + self.ADDTL_OPTION_TAGS
-            comp_choice = self.CL_comparison_query(comp_ind, line_width = line_width, 
+        # Creating list of acceptable choice answers
+        label_choice_tags = list(map(str,range(1,len(self.label_choices)+1)))
+        valid_choices = ['0'] + label_choice_tags + self.ADDTL_OPTION_TAGS
+
+        # Print comparison, gather input, and process the choice
+        comp_choice = self.CL_comparison_query(self.curr_comp_pair_index, 
+                                                line_width = line_width, 
+                                                valid_choices = valid_choices)
+        self.CL_process_choice(comp_choice, comp_pairs_path = comp_pairs_path)
+        print("*"*line_width+"\n")
+        
+        # Continue comparing record pairs and processing options until user exits
+        while comp_choice != 'e':
+            comp_choice = self.CL_comparison_query(self.curr_comp_pair_index, 
+                                                    line_width = line_width, 
                                                     valid_choices = valid_choices)
+            self.CL_process_choice(comp_choice, comp_pairs_path = comp_pairs_path)
+            print("*"*line_width+"\n")
             
-            # Process choice
-            if comp_choice == '0':
-                self.save_label("", comp_ind = comp_ind, comp_pairs_path = comp_pairs_path)
-                print("*"*line_width+"\n")
-            elif comp_choice in label_choice_tags:
-                self.save_label(self.label_choices[int(comp_choice)-1], 
-                                comp_ind = comp_ind,
-                                comp_pairs_path = comp_pairs_path)
-                print("*"*line_width+"\n")
-            elif comp_choice == 'n':
-                print("*"*line_width+"\n")
-                continue
-            elif comp_choice == 'e':
-                print("*"*line_width+"\n")
-                break
-            elif comp_choice == 'a':
-                note_text = input("Enter note (replaces current note): ")
-                self.comp_df.loc[comp_ind,self.REV_NOTE_COL] = note_text
-                self.comp_df.loc[comp_ind,self.REV_DATE_COL] = datetime.datetime.now()
-                self.save_comp_df(comp_pairs_path = comp_pairs_path)
-                print("*"*line_width+"\n")
-            else:
-                raise NotImplementedError("Impossible! An invalid comp_choice ({comp_choice}) got through!?")
     
     def save_comp_df(self, comp_pairs_path = None):
         """ Saves the current value of the comparison dataframe """
@@ -514,6 +545,7 @@ def main():
         
         # Load the review parameters and start reviewing (assuming they were passed)
         rev = rlr(rev_packet_path)
+        rev.CL_review_comparisons()
 
 if __name__ == "__main__":
     main()
