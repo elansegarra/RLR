@@ -349,7 +349,8 @@ class rlr:
     def get_label_choices(self):
         return self.label_choices
 
-    def CL_comparison_query(self, comp_ind = None, line_width = None):
+    def CL_comparison_query(self, comp_ind = None, line_width = None,
+                                valid_choices = None):
         """ Prints a full comparison, to the command line, of the passed comparison index and 
             gathers (validated) option input and returns the result 
         
@@ -359,6 +360,9 @@ class rlr:
                     is passed it assumes the user refers to curr_comp_pair_index
                 line_width: int, optional
                     Line width (in number of characters) for printing comparisons
+                valid_choices: None or list of str
+                    Query will repeat until user enters an option in valid_choices
+                    Value of None means all inputs are valid
             
             Returns: string or None
                 If a label option is chosen it will return the associated number (which is +1 of
@@ -390,9 +394,13 @@ class rlr:
         else:                                curr_label = 0
         self.CL_print_input_options(sel_label = curr_label, line_width = line_width)
 
-        # Gather option choice from user
-        option_choice = input("Enter Option: ")
-        return option_choice
+        # Gather option choice from user until they pass a valid one
+        choice = input("Enter Choice: ").lower()
+        while (valid_choices is not None) and (choice not in valid_choices):
+            print("*** Invalid Choice ***")
+            choice = input("Enter Choice: ").lower()
+            
+        return choice
 
     def review_comparisons(self, comp_inds, line_width = None, comp_pairs_path = None):
         """ Displays a single comparison and gathers option input
@@ -426,10 +434,8 @@ class rlr:
             # Print comparison and gather input (until valid choice given)
             label_choice_tags = list(map(str,range(1,len(self.label_choices)+1)))
             valid_choices = ['0'] + label_choice_tags + self.ADDTL_OPTION_TAGS
-            comp_choice = self.CL_comparison_query(comp_ind, line_width = line_width).lower()
-            while comp_choice not in valid_choices:
-                print("*** Invalid Choice ***")
-                comp_choice = self.CL_comparison_query(comp_ind, line_width = line_width).lower()
+            comp_choice = self.CL_comparison_query(comp_ind, line_width = line_width, 
+                                                    valid_choices = valid_choices)
             
             # Process choice
             if comp_choice == '0':
