@@ -446,9 +446,9 @@ class rlr:
             # Get index entry and check if valid (and go there if so)
             go_to_index = input(f"Enter Index ({0}-{self.comp_df.shape[0]-1}):")
             while go_to_index not in valid_comp_indices:
-                print(f"** This index is not valid, must be between 0 and {self.comp_df.shape[0]-1} **")
+                print(f"** This index is not valid, must be integer between 0 and {self.comp_df.shape[0]-1} **")
                 go_to_index = input(f"Enter Index ({0}-{self.comp_df.shape[0]-1}):")
-            self.curr_comp_pair_index = go_to_index
+            self.curr_comp_pair_index = int(go_to_index)
         elif comp_choice == 'a': # Add a note to this comparison
             note_text = input("Enter note (replaces current note): ")
             self.comp_df.loc[self.curr_comp_pair_index,self.REV_NOTE_COL] = note_text
