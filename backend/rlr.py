@@ -252,8 +252,8 @@ class rlr:
     def get_var_comp_schema(self):
         return self.var_schema
     
-    def print_comp_var_group(self, var_group_data, line_width = None):
-        """ Prints the variable group data in 3 side by side columns """
+    def CL_print_comparison_var_group(self, var_group_data, line_width = None):
+        """ Prints a single variable group of a comparison to the command line """
         if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
         # Calculate the column widths and number or rows needed
         l_col_width = int(line_width*self.COMP_PRINT_COL_WEIGHT[0])
@@ -280,7 +280,7 @@ class rlr:
             # Print compiled line of text
             print(line_text)
 
-    def print_full_comparison(self, comp_ind, line_width = None):
+    def CL_print_comparison_full(self, comp_ind, line_width = None):
         """ Prints out the full comparison (based on var_schema) between the
             records identified in the passed index (of comp_df)"""
         # First get the associated grouped data of the pair (and exit if not found)
@@ -301,14 +301,15 @@ class rlr:
         # Print each group of the variable groups found (with lines in between)
         for val_group in val_groups:
             print("-"*line_width)
-            self.print_comp_var_group(val_group, line_width=line_width)
+            self.CL_print_comparison_var_group(val_group, line_width=line_width)
         print("-"*line_width)
 
     def get_label_choices(self):
         return self.label_choices
 
-    def gather_comparison_input(self, comp_ind = None, incl_options = None, line_width = None):
-        """ Displays a single comparison and gathers option input
+    def CL_comparison_query(self, comp_ind = None, incl_options = None, line_width = None):
+        """ Prints a full comparison, to the command line, of the passed comparison index and 
+            gathers (validated) option input and returns the result 
         
             Args:
                 comp_ind: int, optional
@@ -320,8 +321,9 @@ class rlr:
                     Line width (in number of characters) for printing comparisons
             
             Returns: string or None
-                If an option is chosen it will return the number (for a label) or the
-                letter associated with the incl_options (if present)
+                If a label option is chosen it will return the associated number (which is +1 of
+                the associated index in self.label_choices) or if another option is choesen it
+                returns the letter associated with the incl_options (if present)
 
         """
         # Verifies that datasets and comparison files and choices have all been set
@@ -336,7 +338,7 @@ class rlr:
         if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
 
         # Prints the comparison of this pair of records
-        self.print_full_comparison(comp_ind, line_width = line_width)
+        self.CL_print_comparison_full(comp_ind, line_width = line_width)
         # Print a note if there is anything there
         note = self.comp_df.loc[comp_ind, self.REV_NOTE_COL]
         if (isinstance(note,str) and note!= "") or (isinstance(note,float) and not isnan(note)):
@@ -406,11 +408,11 @@ class rlr:
             # Print comparison and gather input (until valid choice given)
             label_choice_tags = list(map(str,range(1,len(self.label_choices)+1)))
             valid_choices = label_choice_tags + ['S', 's', 'N', 'n', 'E', 'e']
-            comp_choice = self.gather_comparison_input(comp_ind, incl_options = ['skip', 'note', 'exit'],
+            comp_choice = self.CL_comparison_query(comp_ind, incl_options = ['skip', 'note', 'exit'],
                                                     line_width = line_width)
             while comp_choice not in valid_choices:
                 print("*** Invalid Choice ***")
-                comp_choice = self.gather_comparison_input(comp_ind, 
+                comp_choice = self.CL_comparison_query(comp_ind, 
                                                     incl_options = ['skip', 'note', 'exit'],
                                                     line_width = line_width)
             
