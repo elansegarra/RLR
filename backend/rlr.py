@@ -428,7 +428,7 @@ class rlr:
         if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
 
         # Prints a heading for comparison
-        head_text = f"Record Pair {self.curr_comp_pair_index}/{self.comp_df.shape[0]-1}"
+        head_text = f"Record Pair {self.curr_comp_pair_index+1}/{self.comp_df.shape[0]}"
         print("*"*line_width)
         print("*"+head_text.center(line_width-2)+"*")
         print("*"*line_width)
@@ -467,7 +467,7 @@ class rlr:
         """
         # Create list of tags associated with label choices and valid comp pair indices
         label_choice_tags = list(map(str,range(1,len(self.label_choices)+1)))
-        valid_comp_indices = list(map(str,range(self.comp_df.shape[0])))
+        valid_comp_indices = list(map(str,range(1,self.comp_df.shape[0]+1)))
 
         # Take action according to choice passed
         if comp_choice == '0':  # No label chosen
@@ -491,11 +491,11 @@ class rlr:
                 self.curr_comp_pair_index += 1
         elif comp_choice == 'g': # Go to another comparison
             # Get index entry and check if valid (and go there if so)
-            go_to_index = input(f"Enter Index ({0}-{self.comp_df.shape[0]-1}):")
+            go_to_index = input(f"Enter Comp. Number (1-{self.comp_df.shape[0]}): ")
             while go_to_index not in valid_comp_indices:
-                print(f"** This index is not valid, must be integer between 0 and {self.comp_df.shape[0]-1} **")
-                go_to_index = input(f"Enter Index ({0}-{self.comp_df.shape[0]-1}):")
-            self.curr_comp_pair_index = int(go_to_index)
+                print(f"** This index is not valid, must be integer between 1 and {self.comp_df.shape[0]} **")
+                go_to_index = input(f"Enter Comp. Number (1-{self.comp_df.shape[0]}): ")
+            self.curr_comp_pair_index = int(go_to_index)-1
         elif comp_choice == 'a': # Add a note to this comparison
             note_text = input("Enter note (replaces current note): ")
             self.comp_df.loc[self.curr_comp_pair_index,self.REV_NOTE_COL] = note_text
@@ -536,7 +536,7 @@ class rlr:
                                                 line_width = line_width, 
                                                 valid_choices = valid_choices)
         self.CL_process_choice(comp_choice, comp_pairs_path = comp_pairs_path)
-        print("*"*line_width+"\n")
+        print(" "*line_width+"\n")
         
         # Continue comparing record pairs and processing options until user exits
         while comp_choice != 'e':
@@ -544,8 +544,7 @@ class rlr:
                                                     line_width = line_width, 
                                                     valid_choices = valid_choices)
             self.CL_process_choice(comp_choice, comp_pairs_path = comp_pairs_path)
-            print("*"*line_width+"\n")
-            
+            print(" "*line_width+"\n")
             
     def save_comp_df(self, comp_pairs_path = None):
         """ Saves the current value of the comparison dataframe """
