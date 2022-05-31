@@ -79,12 +79,15 @@ else:
         Rcol.markdown(tformat(str(recR[R_var_name]),'L'),  unsafe_allow_html=True)
 
     # Buttons for link determinations
+    choices = ["No Label", "Don't match", "Maybe match", "Match"]
     prev_col, choice_col, next_col = st.columns([1,4,1])
     prev = prev_col.button("<< Previous", 
                             disabled=(st.session_state['curr_link_pair']==0), 
                             on_click=prev_pair)
-    link_determination = choice_col.selectbox("Choose Link Determination",
-                                    ["Don't match", "Maybe match", "Match"])
+    # link_determination = choice_col.selectbox("Choose Link Determination", choices)
+    choice_col.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content: center;} </style>', unsafe_allow_html=True)
+    # choice_col.write('<style>div.st-bf{flex-direction:column;} </style>', unsafe_allow_html=True)
+    choice_col.radio("Choose link determinations:", choices)
     prev = next_col.button("Next >>", 
                             disabled=(st.session_state['curr_link_pair']==len(link_pairs)-1),
                             on_click=next_pair)
