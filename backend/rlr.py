@@ -253,35 +253,40 @@ class rlr:
     def get_var_comp_schema(self):
         return self.var_schema
     
-    def CL_print_comparison_var_group(self, var_group_data, line_width = None):
+    def CL_print_comparison_var_group(self, var_group_data, table_width = None, margin = 0):
         """ Prints a single variable group of a comparison to the command line """
-        if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
+        # IF bo table width is passed, use the default line width
+        if table_width is None: table_width = self.COMP_DEFAULT_LINE_WIDTH
         # Calculate the column widths and number or rows needed
-        l_col_width = int(line_width*self.COMP_PRINT_COL_WEIGHT[0])
-        m_col_width = int(line_width*self.COMP_PRINT_COL_WEIGHT[1])
-        r_col_width = int(line_width*self.COMP_PRINT_COL_WEIGHT[2])
+        l_col_width = int(table_width*self.COMP_PRINT_COL_WEIGHT[0])-1
+        m_col_width = int(table_width*self.COMP_PRINT_COL_WEIGHT[1])
+        r_col_width = int(table_width*self.COMP_PRINT_COL_WEIGHT[2])-1
         row_num = max(len(var_group_data['lvals']), len(var_group_data['rvals']))
 
         # Print each line (or skip if nothing to print for that column)
         for i in range(row_num):
-            line_text = ""
+            line_text = " "*margin+"|"
             # Append left variable value right aligned (if it exists)
             if i < len(var_group_data['lvals']):
                 line_text += str(var_group_data['lvals'][i]).rjust(l_col_width)
             else: line_text += " "*l_col_width
 
+            # Append variable group name (for first row) and spaces for others
             if i == 0 : # Print group name on first line
                 line_text += str(var_group_data['name']).center(m_col_width)
             else: line_text += " "*m_col_width
 
+            # Append right variable value left aligned (if it exists)
             if i < len(var_group_data['rvals']):
                 line_text += str(var_group_data['rvals'][i]).ljust(r_col_width)
-            else: line_text += " "*r_col_width
+
+            # Add finish to table row
+            line_text += " "*(margin+table_width-len(line_text)-1) + "|"
 
             # Print compiled line of text
             print(line_text)
 
-    def CL_print_comparison_full(self, comp_ind, line_width = None):
+    def CL_print_comparison_full(self, comp_ind, table_width = None, margin = 0):
         """ Prints out the full comparison (based on var_schema) between the
             records identified in the passed index (of comp_df)"""
         # First get the associated grouped data of the pair (and exit if not found)
@@ -290,20 +295,24 @@ class rlr:
             print("**** At least one id was not found in the data sets of this pair of records ****")
             return
         # Set line width if not passed
-        if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
+        if table_width is None: table_width = self.COMP_DEFAULT_LINE_WIDTH
 
         # Print headings (after calculating column widths)
-        l_col_width = int(line_width*self.COMP_PRINT_COL_WEIGHT[0])
-        m_col_width = int(line_width*self.COMP_PRINT_COL_WEIGHT[1])
-        r_col_width = int(line_width*self.COMP_PRINT_COL_WEIGHT[2])
-        print("Left Data Record".rjust(l_col_width) + "Var. Group".center(m_col_width) +
-                "Right Data Record".ljust(r_col_width))
+        l_col_width = int(table_width*self.COMP_PRINT_COL_WEIGHT[0])-1
+        m_col_width = int(table_width*self.COMP_PRINT_COL_WEIGHT[1])
+        r_col_width = int(table_width*self.COMP_PRINT_COL_WEIGHT[2])-1
+        heading = " "*margin+"|"+"Left Data Record".rjust(l_col_width)
+        heading += "Vars".center(m_col_width)
+        heading += "Right Data Record".ljust(r_col_width)
+        heading += " "*(margin+table_width-len(heading)-1) + "|"
+        print(heading)
 
         # Print each group of the variable groups found (with lines in between)
         for val_group in val_groups:
-            print("-"*line_width)
-            self.CL_print_comparison_var_group(val_group, line_width=line_width)
-        print("-"*line_width)
+            print(" "*margin+"+"+"-"*(table_width-2)+"+")
+            self.CL_print_comparison_var_group(val_group, table_width = table_width, 
+                                                        margin = margin)
+        print(" "*margin+"+"+"-"*(table_width-2)+"+")
 
     def CL_print_input_options(self, sel_label = None, line_width = None):
         """ Prints option choices (label options and addtl options) to the command line 
@@ -395,7 +404,7 @@ class rlr:
     def get_label_choices(self):
         return self.label_choices
 
-    def CL_comparison_query(self, comp_ind = None, line_width = None,
+    def CL_comparison_query(self, comp_ind = None, min_table_width = None,
                                 valid_choices = None):
         """ Prints a full comparison, to the command line, of the passed comparison index and 
             gathers (validated) option input and returns the result 
@@ -404,8 +413,8 @@ class rlr:
                 comp_ind: int, optional
                     Index (in comp_df) of the comparison pair to be review. If nothing 
                     is passed it assumes the user refers to curr_comp_pair_index
-                line_width: int, optional
-                    Line width (in number of characters) for printing comparisons
+                min_table_width: int, optional
+                    Minimum table width (in number of characters) for printing comparisons
                 valid_choices: None or list of str
                     Query will repeat until user enters an option in valid_choices
                     Value of None means all inputs are valid
@@ -421,21 +430,36 @@ class rlr:
             warnings.warn("Cannot review a comparison when datasets, comparison pairs, and/or choices have not been set")
             return None
 
-        # Sets default comparison index (and line_width) and checks if valid 
+        # Sets default comparison index (and table_width) and checks if valid 
         if comp_ind is None: comp_ind = self.curr_comp_pair_index
         index_in_range = (0 <= comp_ind <= self.comp_df.shape[0]-1)
         assert index_in_range, f"Comparison index ({comp_ind}) is out of bounds"
-        if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
+
+        # Calculating the table width from the column data
+        table_data = self.get_comp_pair("raw", comp_ind = comp_ind)
+        max_l_val = max([len(str(v)) for v in table_data['l_rec'].values()])
+        max_r_val = max([len(str(v)) for v in table_data['r_rec'].values()])
+        table_data = self.get_comp_pair("grouped", comp_ind = comp_ind)
+        max_m_val = max([len(g['name']) for g in table_data])
+        table_width = 2*max(max_l_val, max_r_val) + max_m_val + 8
+
+        # Enforcing minimum table width and calulating margin to center table
+        if min_table_width is None: min_table_width = 0
+        table_width = max(min_table_width, table_width)
+        margin = (self.COMP_DEFAULT_LINE_WIDTH-table_width)//2
 
         # Prints a heading for comparison
         head_text = f"Record Pair {self.curr_comp_pair_index+1}/{self.comp_df.shape[0]}"
-        print("*"*line_width)
-        print("*"+head_text.center(line_width-2)+"*")
-        print("*"*line_width)
+        print(" "*margin+"+"+"-"*(table_width-2)+"+")
+        print(" "*margin+"|"+head_text.center(table_width-2)+"|")
+        print(" "*margin+"+"+"-"*(table_width-2)+"+")
 
         # Prints the comparison of this pair of records
-        self.CL_print_comparison_full(comp_ind, line_width = line_width)
+        self.CL_print_comparison_full(comp_ind, table_width = table_width, margin = margin)
+        print("")
+
         # Print a note if there is anything there
+        # TODO: Make note last row of comparison table (and so it wraps around if necessary)
         note = self.comp_df.loc[comp_ind, self.REV_NOTE_COL]
         if (isinstance(note,str) and note!= "") or (isinstance(note,float) and not isnan(note)):
             print(f"Note: {self.comp_df.loc[comp_ind, self.REV_NOTE_COL]}")
@@ -444,7 +468,7 @@ class rlr:
         curr_label = self.comp_df.loc[comp_ind, self.REV_LABEL_COL]
         if curr_label in self.label_choices: curr_label = self.label_choices.index(curr_label)+1
         else:                                curr_label = 0
-        self.CL_print_input_options(sel_label = curr_label, line_width = line_width)
+        self.CL_print_input_options(sel_label = curr_label)
 
         # Gather option choice from user until they pass a valid one
         choice = input("Enter Choice: ").lower()
@@ -533,7 +557,7 @@ class rlr:
 
         # Print comparison, gather input, and process the choice
         comp_choice = self.CL_comparison_query(self.curr_comp_pair_index, 
-                                                line_width = line_width, 
+                                                min_table_width = 60,
                                                 valid_choices = valid_choices)
         self.CL_process_choice(comp_choice, comp_pairs_path = comp_pairs_path)
         print(" "*line_width+"\n")
@@ -541,7 +565,7 @@ class rlr:
         # Continue comparing record pairs and processing options until user exits
         while comp_choice != 'e':
             comp_choice = self.CL_comparison_query(self.curr_comp_pair_index, 
-                                                    line_width = line_width, 
+                                                    min_table_width = 60,
                                                     valid_choices = valid_choices)
             self.CL_process_choice(comp_choice, comp_pairs_path = comp_pairs_path)
             print(" "*line_width+"\n")
