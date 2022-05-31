@@ -18,7 +18,8 @@ class rlr:
     COMP_EXIST_THRESH = 0.8  # Set to 0 to skip checking if all comp pairs exist in data
     COMP_PRINT_COL_WEIGHT = [0.4, 0.2, 0.4]
     COMP_DEFAULT_LINE_WIDTH = 80
-    ADDTL_OPTION_TEXTS = ["(P) Previous", "(N) Next", "(G) Go to",  "(A) Annotate", "(E) Exit"]
+    ADDTL_OPTION_TEXTS = ["(P) Previous", "(N) Next", "(G) Go to", 
+                            "(A) Annotate", "(S) Summary", "(E) Exit"]
     ADDTL_OPTION_TAGS = [text[1].lower() for text in ADDTL_OPTION_TEXTS]
 
     def __init__(self, rev_packet_path = None):
@@ -345,6 +346,52 @@ class rlr:
             options_line += addtl_option + ' '
         print(options_line)
 
+    def CL_print_label_summary(self, line_width = None, detailed = False):
+        """ Prints a summary of the current label to the command line 
+        
+            Args:
+                line_width: int, optional
+                    Line width (in number of characters) for printing comparisons
+                detailed: bool, optional
+                    Default is to print coutns of each label, detailed includes every specific label
+        """
+        # Sets default line width
+        if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
+
+        # Create dictionary of counts by label (need to iterate in case a label hasn't been used)
+        no_label_num = self.comp_df.shape[0] - self.comp_df[self.REV_LABEL_COL].count()
+        no_label_num += (self.comp_df[self.REV_LABEL_COL]=="").sum()
+        label_counts = {"Unlabeled": (no_label_num)}
+        for label in self.label_choices:
+            label_counts[label] = sum(self.comp_df[self.REV_LABEL_COL]==label)
+        # label_counts.update(self.comp_df[self.REV_LABEL_COL].value_counts().to_dict())
+
+        # Double check counts add up to number of comparison pairs
+        if sum(label_counts.values()) != self.comp_df.shape[0]:
+            print("Counts don't match, check the dataframe:")
+            print(self.comp_df)
+            raise Exception("Counts don't match, check the above dataframe.")
+
+        # Calculate max label length and count length (and margin so table is centered)
+        max_label_len = max([len(str(lab)) for lab in label_counts.keys()])
+        max_count_len = max([len(str(lab)) for lab in label_counts.values()])
+        margin = line_width//2 - (max_label_len+max_count_len+7)//2
+        
+        if detailed:
+            # TODO: Iterate through each record pair and print current label
+            pass
+        else:
+            print("")
+            print(" "*margin + "+" + "-"*(max_label_len+max_count_len+5) + "+")
+            print(" "*margin + "+" + "Label Summary".center(max_label_len+max_count_len+5) + "+")
+            print(" "*margin + "+" + "-"*(max_label_len+max_count_len+5) + "+")
+            for label in label_counts:
+                line_text = " "*margin
+                line_text += f"| {label.rjust(max_label_len)} | "
+                line_text += f"{str(label_counts[label]).rjust(max_count_len)} |"
+                print(line_text)
+            print(" "*margin + "+" + "-"*(max_label_len+max_count_len+5) + "+")
+
     def get_label_choices(self):
         return self.label_choices
 
@@ -454,6 +501,8 @@ class rlr:
             self.comp_df.loc[self.curr_comp_pair_index,self.REV_NOTE_COL] = note_text
             self.comp_df.loc[self.curr_comp_pair_index,self.REV_DATE_COL] = datetime.datetime.now()
             self.save_comp_df(comp_pairs_path = comp_pairs_path)
+        elif comp_choice == 's': # Summary (print labeling summary)
+            self.CL_print_label_summary(line_width = self.COMP_DEFAULT_LINE_WIDTH)
         elif comp_choice == 'e': # Exit (do nothing here)
             return
         else:
@@ -497,7 +546,7 @@ class rlr:
             self.CL_process_choice(comp_choice, comp_pairs_path = comp_pairs_path)
             print("*"*line_width+"\n")
             
-    
+            
     def save_comp_df(self, comp_pairs_path = None):
         """ Saves the current value of the comparison dataframe """
         # Sets default file path if nothing passed
