@@ -25,12 +25,7 @@ def prev_pair():
 ###########################################################################
 
 with st.sidebar:
-    all_books = []
     st.title("Load Inputs")
-    data_file_L = st.file_uploader("Upload first data file", 
-                                    accept_multiple_files=False, type = ['csv', 'dta'])
-    data_file_R = st.file_uploader("Upload second data file", 
-                                    accept_multiple_files=False, type = ['csv', 'dta'])
     review_file = st.file_uploader("Upload file of linked pairs for review", 
                                     accept_multiple_files=False, type = ['csv', 'dta'])
     # Open files and load them here
