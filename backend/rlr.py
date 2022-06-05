@@ -557,10 +557,11 @@ class rlr:
 
         # Take action according to choice passed
         if comp_choice == '0':  # No label chosen
-            self.save_label("", comp_ind = self.curr_comp_pair_index, 
+            self.save_label_or_note("", label_or_note = 'label', comp_ind = self.curr_comp_pair_index, 
                                 comp_pairs_path = comp_pairs_path)
         elif comp_choice in label_choice_tags: # Label chosen
-            self.save_label(self.label_choices[int(comp_choice)-1], 
+            self.save_label_or_note(self.label_choices[int(comp_choice)-1], 
+                            label_or_note = 'label', 
                             comp_ind = self.curr_comp_pair_index,
                             comp_pairs_path = comp_pairs_path)
         elif comp_choice == 'p': # Previous comparison
@@ -584,9 +585,9 @@ class rlr:
             self.curr_comp_pair_index = int(go_to_index)-1
         elif comp_choice == 'a': # Add a note to this comparison
             note_text = input("Enter note (replaces current note): ")
-            self.comp_df.loc[self.curr_comp_pair_index,self.REV_NOTE_COL] = note_text
-            self.comp_df.loc[self.curr_comp_pair_index,self.REV_DATE_COL] = datetime.datetime.now()
-            self.save_comp_df(comp_pairs_path = comp_pairs_path)
+            self.save_label_or_note(note_text, label_or_note = 'note', 
+                            comp_ind = self.curr_comp_pair_index,
+                            comp_pairs_path = comp_pairs_path)
         elif comp_choice == 's': # Summary (print labeling summary)
             self.CL_print_label_summary(line_width = self.COMP_DEFAULT_LINE_WIDTH)
         elif comp_choice == 'e': # Exit (do nothing here)
@@ -643,18 +644,24 @@ class rlr:
         elif    data_ext == ".dta":   self.comp_df.to_stata(comp_pairs_path, write_index = False)
         else:   raise NotImplementedError(f"Filetype of {data_ext} must be either csv or dta")
 
-    def save_label(self, label, comp_ind = None, comp_pairs_path = None):
-        """ Validates and saves the label choice to the indicated comparison pair. 
+    def save_label_or_note(self, text, label_or_note = 'label', comp_ind = None, 
+                            comp_pairs_path = None, delay_file_save = False):
+        """ Validates and saves the label choice or note to the indicated comparison pair. 
         
             Args:
                 label: str
                     The label that will be saved for this record pair (should be among label_choices)
+                label_or_note: str (either 'label' or 'note')
+                    Indicates whether to save 'text' to the label or note
                 comp_ind: int, optional
                     Index (in comp_df) of the comparison pair the label is being applied to.
                     If nothing is passed it assumes the user refers to curr_comp_pair_index
                 comp_pairs_path: string, optional
                     Filename (and path) that the current version of the comp_df will be saved
                     to. If nothing is passed it uses the same path as original comparison file
+                delay_file_save: bool, optional
+                    Indicates whether to delay saving to the attached csv and just keep changes
+                    locally in self.comp_df
         """
         # Verifies that datasets and comparison files and choices have all been set
         if not self.ready_to_review:
@@ -664,18 +671,30 @@ class rlr:
         # Sets default comparison index
         if comp_ind is None: comp_ind = self.curr_comp_pair_index
 
-        # Check that label is valid and comp_ind is valid
-        assert label in [""]+self.label_choices, f"Label passed ({label}) is not among valid choices"
+        # Check that comp_ind is valid
         index_in_range = (0 <= comp_ind <= self.comp_df.shape[0]-1)
         assert index_in_range, f"Comparison index ({comp_ind}) is out of bounds"
 
-        # Update comparison df with the label (and associated columns)
-        self.comp_df.loc[comp_ind,self.REV_LABEL_COL] = label
-        self.comp_df.loc[comp_ind,self.REV_LABEL_IND_COL] = 1
+        # Save label or note to the comp_df table
+        if label_or_note == 'label':
+            # Check that label is valid and comp_ind is valid
+            assert text in [""]+self.label_choices, f"Label passed ({text}) is not among valid choices"
+            # Update comparison df with the label (and associated columns)
+            self.comp_df.loc[comp_ind,self.REV_LABEL_COL] = text
+            self.comp_df.loc[comp_ind,self.REV_LABEL_IND_COL] = 1
+        elif label_or_note == 'note':
+            # Update comparison df with the label (and associated columns)
+            self.comp_df.loc[comp_ind,self.REV_NOTE_COL] = text
+            self.comp_df.loc[comp_ind,self.REV_LABEL_IND_COL] = 1
+        else:
+            raise NotImplementedError(f"Unrecognized value of 'label_or_note' ({label_or_note}) in function.")
+
+        # Update the changed variable
         self.comp_df.loc[comp_ind,self.REV_DATE_COL] = datetime.datetime.now()
 
-        # Save the comparison dataframe
-        self.save_comp_df(comp_pairs_path = comp_pairs_path)
+        # Save the comparison dataframe (if not delayed)
+        if not delay_file_save:
+            self.save_comp_df(comp_pairs_path = comp_pairs_path)
 
 def main():
     # Check if a file was passed
