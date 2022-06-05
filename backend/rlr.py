@@ -122,7 +122,8 @@ class rlr:
         # Check that id_vars_l and id_vars_r form a unqiue id for records in comparison file
         all_ids = self.id_vars_l + self.id_vars_r
         ids_are_unique = comp_df.set_index(all_ids).index.is_unique
-        assert ids_are_unique, f"Id variables ({all_ids} do not uniquely identify records in comparison file"
+        if not ids_are_unique:
+            warnings.warn(f"Id variables ({all_ids}) do not uniquely identify records in comparison file.")
         # comp_df.set_index(all_ids, inplace=True, drop=False)
         comp_df.reset_index(inplace = True, drop = True) # Changes index to 0,1,2,....
 
@@ -253,9 +254,8 @@ class rlr:
             return None
 
         # Extract raw data associated with the comparison pair ids
-        # TODO: Below code assumes id_vars has only one variable (need to generalize to multi-index)
-        l_id = self.comp_df.loc[comp_ind,self.id_vars_l[0]]
-        r_id = self.comp_df.loc[comp_ind,self.id_vars_r[0]]
+        l_id = tuple(self.comp_df.loc[comp_ind,self.id_vars_l])
+        r_id = tuple(self.comp_df.loc[comp_ind,self.id_vars_r])
         l_rec_data = self.dataL.loc[l_id].to_dict()
         r_rec_data = self.dataR.loc[r_id].to_dict()
 
@@ -274,7 +274,7 @@ class rlr:
                 rec_data_grouped.append(var_group_data)
             return rec_data_grouped
         else:
-            raise NotImplementedError(f"")
+            raise NotImplementedError(f"Argument raw_or_grouped ({raw_or_grouped}) must be either 'raw' or 'grouped'")
 
     def get_var_comp_schema(self):
         if self.var_schema_loaded:
