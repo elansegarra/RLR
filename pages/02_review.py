@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from backend.rlr import rlr
 
 ###########################################################################
 #### Function Definitions #################################################
@@ -11,11 +12,25 @@ def remove_comp_file():
     st.session_state['rlr'].comp_df = None
     st.session_state['rlr'].ready_to_review = False
     
+def tformat(text, align='C', el='p'):
+    align_dict = {'L':'left', 'C':'center','R':'right'}
+    return(f"<{el} style='text-align: {align_dict[align]};'>{text}</{el}>")
+
+def next_pair():
+    """ Move to next comparison if not at end """
+    if st.session_state['rlr'].curr_comp_pair_index < st.session_state['rlr'].comp_df.shape[0]-1:
+        st.session_state['rlr'].curr_comp_pair_index += 1
+
+def prev_pair():
+    """ Move to previous comparison if not at beginning """
+    if st.session_state['rlr'].curr_comp_pair_index < 0:
+        st.session_state['rlr'].curr_comp_pair_index -= 1
+
 ###########################################################################
 #### App - Sidebar ########################################################
 ###########################################################################
 
-# Initializing rlr backend
+# Initializing rlr backend if not done already
 if 'rlr' not in st.session_state:
     st.session_state['rlr'] = rlr()
 
@@ -56,11 +71,55 @@ with st.sidebar:
 ###########################################################################
 
 # Heading and input description
-st.title("Record Linkage Review")
+# st.title("Record Linkage Review")
 
 # Check if RLR is ready to review links
 if (st.session_state['rlr'].ready_to_review):
-    st.write("Review ready. TBD.")
+    # Grab the current variable data associated with current record pair
+    curr_comp_data = st.session_state['rlr'].get_comp_pair("grouped")
+    curr_comp_index = st.session_state['rlr'].curr_comp_pair_index
+    num_comparisons = st.session_state['rlr'].comp_df.shape[0]
+
+
+    # Data Comparison Titles
+    comp_heading_text = f"Reviewing Linkage {curr_comp_index+1}/{num_comparisons}"
+    st.markdown(tformat(comp_heading_text, el = 'h2'),  unsafe_allow_html=True)
+    tcol1, tcol2 = st.columns(2)
+    tcol1.markdown(tformat("Left Data"),  unsafe_allow_html=True)
+    tcol2.markdown(tformat("Right Data"),  unsafe_allow_html=True)
+
+    # Print actual data in comparison (iterate through var schemas)
+    for var_group in curr_comp_data:
+        Lcol, Mcol, Rcol = st.columns([4,1,4])
+        # Print all data values in left column
+        for val in var_group['lvals']:
+            Lcol.markdown(tformat(str(val),'R'),  unsafe_allow_html=True)
+        # Print the name of the comparison group in the middle column
+        Mcol.markdown(tformat(var_group['name']),  unsafe_allow_html=True)
+        # Print all data values in left column
+        for val in var_group['rvals']:
+            Rcol.markdown(tformat(str(val),'L'),  unsafe_allow_html=True)
+
+    # Grab the label choices and the label for current comparison
+    choices = ["No Label"] + st.session_state['rlr'].get_label_choices()
+    label_col = st.session_state['rlr'].REV_LABEL_COL
+    curr_label = st.session_state['rlr'].comp_df.loc[curr_comp_index, label_col]
+    if curr_label in choices:
+        curr_label_ind = choices.index(curr_label)
+    else:
+        # TODO: Unrecognized labels are considered unlabeled (fix so it displays labels outside of choices)
+        curr_label_ind = 0
+
+    # Display buttons for link determinations
+    prev_col, choice_col, next_col = st.columns([1,4,1])
+    prev = prev_col.button("<< Previous", 
+                            disabled=(curr_comp_index==0), 
+                            on_click=prev_pair)
+    choice_col.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content: center;} </style>', unsafe_allow_html=True)
+    choice_col.radio("Choose link determinations:", choices, index = curr_label_ind)
+    prev = next_col.button("Next >>", 
+                            disabled=(curr_comp_index==num_comparisons-1),
+                            on_click=next_pair)
 else:
     st.write("Not all pieces necessary for review have been initialized:")
     # Check which parts are not yet initialized
