@@ -306,13 +306,16 @@ class rlr:
             label_counts[label] = sum(self.comp_df[self.REV_LABEL_COL]==label)
 
         # Adding in counts if there are labels not in self.label_choices
-        label_counts.update(self.comp_df[self.REV_LABEL_COL].value_counts().to_dict())
+        labels_found = self.comp_df[self.REV_LABEL_COL].value_counts().to_dict()
+        for key in self.label_choices + [""]:
+            labels_found.pop(key, None)
+        label_counts.update(labels_found)
 
         # Double check counts add up to number of comparison pairs
         if sum(label_counts.values()) != self.comp_df.shape[0]:
             print("Counts don't match, check the dataframe:")
             print(self.comp_df)
-            raise Exception("Counts don't match, check the above dataframe.")
+            warnings.warn("Counts don't match, check the above dataframe.")
         
         return label_counts
 
