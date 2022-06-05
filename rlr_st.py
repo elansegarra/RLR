@@ -25,6 +25,10 @@ def prev_pair():
 #### App - Sidebar ########################################################
 ###########################################################################
 
+# Initializing rlr backend
+if 'rlr' not in st.session_state:
+    st.session_state['rlr'] = rlr()
+
 with st.sidebar:
     st.title("Load Inputs")
     review_file = st.file_uploader("Upload file of linked pairs for review", 
