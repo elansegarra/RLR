@@ -71,7 +71,7 @@ with st.sidebar:
 ###########################################################################
 
 # Heading and input description
-# st.title("Record Linkage Review")
+st.markdown(tformat("Record Linkage Review", el = 'h1'), unsafe_allow_html=True)
 
 # Check if RLR is ready to review links
 if (st.session_state['rlr'].ready_to_review):
@@ -82,8 +82,8 @@ if (st.session_state['rlr'].ready_to_review):
 
 
     # Data Comparison Titles
-    comp_heading_text = f"Reviewing Linkage {curr_comp_index+1}/{num_comparisons}"
-    st.markdown(tformat(comp_heading_text, el = 'h2'),  unsafe_allow_html=True)
+    comp_heading_text = f"Linkage {curr_comp_index+1}/{num_comparisons}"
+    st.markdown(tformat(comp_heading_text, el = 'h3'),  unsafe_allow_html=True)
     tcol1, tcol2 = st.columns(2)
     tcol1.markdown(tformat("Left Data"),  unsafe_allow_html=True)
     tcol2.markdown(tformat("Right Data"),  unsafe_allow_html=True)
