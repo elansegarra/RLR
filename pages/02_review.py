@@ -58,13 +58,21 @@ with st.sidebar:
     # Display information if a file has been loaded
     if (st.session_state['rlr'].comps_loaded) or (review_file is not None):
         # Gather label counts and display a summary
-        st.subheader("Label Summary")
+        st.subheader("File Label Summary")
         l_counts = st.session_state['rlr'].get_label_counts()
         l_counts_df = pd.DataFrame.from_dict(l_counts, orient = 'index', columns = ['Count'])
         l_counts_df.index.name = "Label"
         l_counts_df['%'] = l_counts_df['Count']/l_counts_df['Count'].sum()*100
         l_counts_df['%'] = l_counts_df['%'].round(1)
         st.dataframe(l_counts_df)
+    
+    st.header("Label Choices")
+    new_label_choices = []
+    curr_labels = "\n".join(st.session_state['rlr'].label_choices)
+    new_labels = st.text_area("Enter choices (each line is a separate label)", value = curr_labels)
+    st.session_state['rlr'].set_label_choices(new_labels.split('\n'))
+    # st.session_state['rlr'].label_choices = new_labels.split('\n')
+    st.write("")
 
 ###########################################################################
 #### App - Review #########################################################
