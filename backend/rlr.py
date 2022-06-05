@@ -25,6 +25,8 @@ class rlr:
     def __init__(self, rev_packet_path = None):
         self.dataL = None
         self.dataR = None
+        self.id_vars_l = None
+        self.id_vars_r = None
         self.comp_df = None
 
         # Load all the parameters in the review packet if passed
@@ -34,47 +36,51 @@ class rlr:
                 rev_packet = json.load(openfile)
             # Load the parameters in the parameter dictionary
             self.load_review_packet(rev_packet)
-            
-
-    def load_datasets(self, data_l_path, data_r_path, id_vars_l, id_vars_r):
+    
+    def load_dataset(self, data_path, id_vars, side):
         """ Loads two data sets and specifies the id variables in each 
         
         Args:
-            data_l_path: (str) path to left data set file (either csv or dta)
-            data_r_path: (str) path to right data set file (either csv or dta)
-            id_vars_l: (str or list of str) variables that uniquely define a record in left data set
-            id_vars_r: (str or list of str) variables that uniquely define a record in right data set
+            data_path: (str) path to data set file (either csv or dta)
+            id_vars: (str or list of str) variables that uniquely define a record in data set
+            side: (str) Either 'l' or 'r' indicating which side is being loaded
         """
         # Check for file and file type, then load each file into a df
-        data_l_ext = os.path.splitext(data_l_path)[1]
-        data_r_ext = os.path.splitext(data_r_path)[1]
-        if      data_l_ext == ".csv":   self.dataL = pd.read_csv(data_l_path)
-        elif    data_l_ext == ".dta":   self.dataL = pd.read_stata(data_l_path)
+        data_ext = os.path.splitext(data_path)[1]
+        if      data_ext == ".csv":   data_df = pd.read_csv(data_path)
+        elif    data_ext == ".dta":   data_df = pd.read_stata(data_path)
         else:                           
-            raise NotImplementedError(f"Filetype of {data_l_path} must be either csv or dta")
-        if      data_r_ext == ".csv":   self.dataR = pd.read_csv(data_r_path)
-        elif    data_r_ext == ".dta":   self.dataR = pd.read_stata(data_r_path)
-        else:                           
-            raise NotImplementedError(f"Filetype of {data_r_path} must be either csv or dta")
+            raise NotImplementedError(f"Filetype of {data_path} must be either csv or dta")
         
-        # Standardize ids and check they differ
-        if isinstance(id_vars_l, str): id_vars_l = [id_vars_l] # Convert to list if a string
-        if isinstance(id_vars_r, str): id_vars_r = [id_vars_r] # Convert to list if a string
-        id_overlap = set(id_vars_l) & set(id_vars_r)
+        # Standardize ids and side and check the value of side
+        if isinstance(id_vars, str): id_vars = [id_vars] # Convert to list if a string
+        side = side.lower()
+        assert side in ['r', 'l'], f"Side argument, {side}, unrecognized. It should be 'r' or 'l'."
+        
+        # Checking for overlap with current id variables (if they exist)
+        if (side == 'r') and (self.id_vars_l is not None):
+            id_overlap = set(self.id_vars_l) & set(id_vars)
+        elif (side == 'l') and (self.id_vars_r is not None):
+            id_overlap = set(self.id_vars_r) & set(id_vars)
+        else:
+            id_overlap = []
         assert len(id_overlap) == 0, "Currently cannot handle overlapping id variables"
 
-        # Validate left ids (check they exist and uniquely define a row) and save them
-        ids_exist = pd.Series(id_vars_l).isin(self.dataL.columns).all()
-        assert ids_exist, f"id variables ({id_vars_l}) not found in the left data set"
-        assert self.dataL.set_index(id_vars_l).index.is_unique, f"id variables ({id_vars_l} do not uniquely identify the left data set"
-        self.id_vars_l = id_vars_l
-        self.dataL.set_index(self.id_vars_l, inplace=True, drop=False)
-        # Validate right ids (check they exist and uniquely define a row) and save them
-        ids_exist = pd.Series(id_vars_r).isin(self.dataR.columns).all()
-        assert  ids_exist, f"id_vars_r ({id_vars_r}) not found in the right data set"
-        assert self.dataR.set_index(id_vars_r).index.is_unique, f"id variables ({id_vars_r} do not uniquely identify the right data set"
-        self.id_vars_r = id_vars_r
-        self.dataR.set_index(self.id_vars_r, inplace=True, drop=False)
+        # Validate ids (check they exist and uniquely define a row) and save them
+        if side == 'l':
+            ids_exist = pd.Series(id_vars).isin(data_df.columns).all()
+            assert ids_exist, f"id variables ({id_vars}) not found in the left data set"
+            assert data_df.set_index(id_vars).index.is_unique, f"id variables ({id_vars} do not uniquely identify the left data set"
+            self.id_vars_l = id_vars
+            self.dataL = data_df
+            self.dataL.set_index(self.id_vars_l, inplace=True, drop=False)
+        if side == 'r':
+            ids_exist = pd.Series(id_vars).isin(data_df.columns).all()
+            assert  ids_exist, f"id_vars_r ({id_vars}) not found in the right data set"
+            assert data_df.set_index(id_vars).index.is_unique, f"id variables ({id_vars} do not uniquely identify the right data set"
+            self.id_vars_r = id_vars
+            self.dataR = data_df
+            self.dataR.set_index(self.id_vars_r, inplace=True, drop=False)
 
     def load_comp_pairs(self, comp_pairs_path):
         """ Loads a file with pairs of records to compare for review
@@ -153,8 +159,8 @@ class rlr:
             assert key in rev_packet, f"Review packet must include '{key}' as a key"
         
         # Load the various parts from the review packet file
-        self.load_datasets(rev_packet['file_L'], rev_packet['file_R'], 
-                            rev_packet['file_L_ids'], rev_packet['file_R_ids'])
+        self.load_dataset(rev_packet['file_L'], rev_packet['file_L_ids'], 'l')
+        self.load_dataset(rev_packet['file_R'], rev_packet['file_R_ids'], 'r')
         self.load_comp_pairs(rev_packet['file_comps'])
         self.set_var_comp_schema(rev_packet['var_group_schema'])
         self.set_label_choices(rev_packet['label_choices'])
