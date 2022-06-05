@@ -23,7 +23,7 @@ def next_pair():
 
 def prev_pair():
     """ Move to previous comparison if not at beginning """
-    if st.session_state['rlr'].curr_comp_pair_index < 0:
+    if st.session_state['rlr'].curr_comp_pair_index > 0:
         st.session_state['rlr'].curr_comp_pair_index -= 1
 
 ###########################################################################
