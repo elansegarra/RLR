@@ -290,6 +290,32 @@ class rlr:
         else:
             raise NotImplementedError(f"Argument raw_or_grouped ({raw_or_grouped}) must be either 'raw' or 'grouped'")
 
+    def get_label_counts(self):
+        """ Returns a summary of the current label counts (as dictionary) """
+        # Check that a comparison file has been loaded
+        assert self.comps_loaded, "Must have a comparison file loaded before generating a summary"
+
+        # Gather the number of unlabeled
+        no_label_num = self.comp_df.shape[0] - self.comp_df[self.REV_LABEL_COL].count()
+        no_label_num += (self.comp_df[self.REV_LABEL_COL]=="").sum()
+
+        # Create dictionary of counts by labels found in self.label_choices 
+        #       (need to iterate in case a label hasn't been used)
+        label_counts = {"Unlabeled": (no_label_num)}
+        for label in self.label_choices:
+            label_counts[label] = sum(self.comp_df[self.REV_LABEL_COL]==label)
+
+        # Adding in counts if there are labels not in self.label_choices
+        label_counts.update(self.comp_df[self.REV_LABEL_COL].value_counts().to_dict())
+
+        # Double check counts add up to number of comparison pairs
+        if sum(label_counts.values()) != self.comp_df.shape[0]:
+            print("Counts don't match, check the dataframe:")
+            print(self.comp_df)
+            raise Exception("Counts don't match, check the above dataframe.")
+        
+        return label_counts
+
     def get_var_comp_schema(self):
         if self.var_schema_loaded:
             return self.var_schema
@@ -408,23 +434,11 @@ class rlr:
                 detailed: bool, optional
                     Default is to print coutns of each label, detailed includes every specific label
         """
-        assert self.comps_loaded, "Must have a comparison file loaded before generating a summary"
         # Sets default line width
         if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
 
-        # Create dictionary of counts by label (need to iterate in case a label hasn't been used)
-        no_label_num = self.comp_df.shape[0] - self.comp_df[self.REV_LABEL_COL].count()
-        no_label_num += (self.comp_df[self.REV_LABEL_COL]=="").sum()
-        label_counts = {"Unlabeled": (no_label_num)}
-        for label in self.label_choices:
-            label_counts[label] = sum(self.comp_df[self.REV_LABEL_COL]==label)
-        # label_counts.update(self.comp_df[self.REV_LABEL_COL].value_counts().to_dict())
-
-        # Double check counts add up to number of comparison pairs
-        if sum(label_counts.values()) != self.comp_df.shape[0]:
-            print("Counts don't match, check the dataframe:")
-            print(self.comp_df)
-            raise Exception("Counts don't match, check the above dataframe.")
+        # Gather the label counts
+        label_counts = self.get_label_counts()
 
         # Calculate max label length and count length (and margin so table is centered)
         max_label_len = max([len(str(lab)) for lab in label_counts.keys()])
@@ -433,7 +447,7 @@ class rlr:
         
         if detailed:
             # TODO: Iterate through each record pair and print current label
-            pass
+            raise NotImplementedError("Have not yet implemented the 'detailed' option for label summaries.")
         else:
             print("")
             print(" "*margin + "+" + "-"*(max_label_len+max_count_len+5) + "+")
