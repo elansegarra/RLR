@@ -12,17 +12,20 @@ import pandas as pd
 
 # Heading and input description
 st.title("Record Linkage Review")
-st.write("Use the below inputs to designate which variables from each "+
-            "data set should be compared to one another. Add or delete "+
-            "comparison groups as necessary.")
 
-# Initialize the group schema
-if 'var_group_schema' not in st.session_state:
-    st.session_state['var_group_schema'] = []
-
-# Check if user has loaded datasets or not
+# Check if RLR is ready to review links
 if (st.session_state['rlr'].ready_to_review):
     st.write("Review ready. TBD.")
 else:
+    st.write("Not all pieces necessary for review have been initialized:")
     # Check which parts are not yet initialized
-    st.write("Not all pieces necessary for review have been initialized.")
+    if not st.session_state['rlr'].dataL_loaded:
+        st.write("  - Need to load a left data set (refer to data input page)")
+    if not st.session_state['rlr'].dataR_loaded:
+        st.write("  - Need to load a right data set (refer to data input page)")
+    if not st.session_state['rlr'].var_schema_loaded:
+        st.write("  - Need to define a variable comparison schema (refer to data input page)")
+    if not st.session_state['rlr'].comps_loaded:
+        st.write("  - Need to load a file of linkages for review (refer to sidebar)")
+    if len(st.session_state['rlr'].label_choices) == 0:
+        st.write("  - Need to define the label choices (refer to sidebar)")
