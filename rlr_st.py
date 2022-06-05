@@ -56,6 +56,10 @@ with st.sidebar:
 #### App - Main Page ######################################################
 ###########################################################################
 
+link_pairs = [[2,'D'],[6,'C'],[4,'G']]
+if 'curr_link_pair' not in st.session_state:
+    st.session_state['curr_link_pair'] = 0
+
 st.title("RLR: Record Linkage Review")
 if len(link_pairs) == 0:
     st.header("Upload 2 data files and a file of linked pairs to review in the sidebar to the left.")
