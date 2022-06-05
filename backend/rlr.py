@@ -21,13 +21,15 @@ class rlr:
     ADDTL_OPTION_TEXTS = ["(P) Previous", "(N) Next", "(G) Go to", 
                             "(A) Annotate", "(S) Summary", "(E) Exit"]
     ADDTL_OPTION_TAGS = [text[1].lower() for text in ADDTL_OPTION_TEXTS]
+    DEFAULT_LABELS = ["Match", "Not a Match"]
 
     def __init__(self, rev_packet_path = None):
-        self.dataL = None
-        self.dataR = None
-        self.id_vars_l = None
-        self.id_vars_r = None
-        self.comp_df = None
+        self.dataL_loaded = False
+        self.dataR_loaded = False
+        self.comps_loaded = False
+        self.var_schema_loaded = False
+        self.ready_to_review = False
+        self.label_choices = self.DEFAULT_LABELS
 
         # Load all the parameters in the review packet if passed
         if rev_packet_path is not None:
@@ -36,6 +38,13 @@ class rlr:
                 rev_packet = json.load(openfile)
             # Load the parameters in the parameter dictionary
             self.load_review_packet(rev_packet)
+
+    def check_ready_to_review(self):
+        data_loaded = self.dataL_loaded and self.dataR_loaded and self.comps_loaded
+        if data_loaded and self.var_schema_loaded and (len(self.label_choices) > 0):
+            self.ready_to_review = True
+        else:
+            self.ready_to_review = False
     
     def load_dataset(self, data_path, id_vars, side):
         """ Loads two data sets and specifies the id variables in each 
@@ -58,9 +67,9 @@ class rlr:
         assert side in ['r', 'l'], f"Side argument, {side}, unrecognized. It should be 'r' or 'l'."
         
         # Checking for overlap with current id variables (if they exist)
-        if (side == 'r') and (self.id_vars_l is not None):
+        if (side == 'r') and (self.dataL_loaded):
             id_overlap = set(self.id_vars_l) & set(id_vars)
-        elif (side == 'l') and (self.id_vars_r is not None):
+        elif (side == 'l') and (self.dataR_loaded):
             id_overlap = set(self.id_vars_r) & set(id_vars)
         else:
             id_overlap = []
@@ -73,6 +82,7 @@ class rlr:
             assert data_df.set_index(id_vars).index.is_unique, f"id variables ({id_vars} do not uniquely identify the left data set"
             self.id_vars_l = id_vars
             self.dataL = data_df
+            self.dataL_loaded = True
             self.dataL.set_index(self.id_vars_l, inplace=True, drop=False)
         if side == 'r':
             ids_exist = pd.Series(id_vars).isin(data_df.columns).all()
@@ -80,7 +90,11 @@ class rlr:
             assert data_df.set_index(id_vars).index.is_unique, f"id variables ({id_vars} do not uniquely identify the right data set"
             self.id_vars_r = id_vars
             self.dataR = data_df
+            self.dataR_loaded = True
             self.dataR.set_index(self.id_vars_r, inplace=True, drop=False)
+        # Flag that var schema and comp_df has to be added again (since data might have changed)
+        self.var_schema_loaded = False
+        self.comps_loaded = False
 
     def load_comp_pairs(self, comp_pairs_path):
         """ Loads a file with pairs of records to compare for review
@@ -91,8 +105,8 @@ class rlr:
                 found in self.id_vars_l and self.id_vars_r
         """
         # Check that data has already been loaded
-        assert self.dataL is not None, "Load a data file before loading a comparison file"
-        assert self.dataR is not None, "Load a data file before loading a comparison file"
+        assert self.dataL_loaded, "Load a data file before loading a comparison file"
+        assert self.dataR_loaded, "Load a data file before loading a comparison file"
         # Validate file format and load the file
         data_ext = os.path.splitext(comp_pairs_path)[1]
         if      data_ext == ".csv":   comp_df = pd.read_csv(comp_pairs_path)
@@ -134,8 +148,9 @@ class rlr:
 
         # Save comparison file to class instance and instantiate other relvant variables
         self.comp_df = comp_df
+        self.comps_loaded = True
+        self.check_ready_to_review()
         self.curr_comp_pair_index = 0
-        self.num_comparisons = self.comp_df.shape[0]
         self.comp_pairs_file_path = comp_pairs_path
     
     def load_review_packet(self, rev_packet):
@@ -164,6 +179,7 @@ class rlr:
         self.load_comp_pairs(rev_packet['file_comps'])
         self.set_var_comp_schema(rev_packet['var_group_schema'])
         self.set_label_choices(rev_packet['label_choices'])
+        self.check_ready_to_review()
 
     def set_var_comp_schema(self, var_schema):
         """ Validate and load the variable comparison schema
@@ -177,8 +193,8 @@ class rlr:
                 'rvars': (list of str) column names of variable in right data set
         """
         # Check that data has already been loaded
-        assert self.dataL is not None, "Load data files before loading a comparison schema"
-        assert self.dataR is not None, "Load data files before loading a comparison schema"
+        assert self.dataL_loaded, "Load data files before loading a comparison schema"
+        assert self.dataR_loaded, "Load data files before loading a comparison schema"
 
         # Iterate through variable groups and validate each
         for var_group in var_schema:
@@ -193,11 +209,14 @@ class rlr:
             assert  ids_exist, f"Schema variables ({var_group['rvars']}) not found in the right data set"
         # Save the variable schema to the class instance
         self.var_schema = var_schema
+        self.var_schema_loaded = True
+        self.check_ready_to_review()
 
     def set_label_choices(self, label_choices):
         """ Set the label choices (by passing a list of strings) """ 
         # Verify that comp_options is a list of strings
         assert isinstance(label_choices, list), f"The object passed to 'label_choices' is not a list"
+        assert len(label_choices)>0, f"The passed list of label choices must be non-empty"
         self.label_choices = [str(opt) for opt in label_choices]
 
     def get_comp_pair(self, raw_or_grouped, comp_ind = None):
@@ -218,9 +237,9 @@ class rlr:
                                 keys ('name', 'lvar_values', and 'rvar_values')
         """
         # Verify that data sets and comparison sets have been loaded
-        assert self.dataL is not None, "Load data files before getting a comparison pair"
-        assert self.dataR is not None, "Load data files before getting a comparison pair"
-        assert self.comp_df is not None, "Load comparison data file before getting a comparison pair"
+        assert self.dataL_loaded, "Load data files before getting a comparison pair"
+        assert self.dataR_loaded, "Load data files before getting a comparison pair"
+        assert self.comps_loaded, "Load comparison data file before getting a comparison pair"
 
         # Sets default index if nothing passed
         if comp_ind is None: comp_ind = self.curr_comp_pair_index
@@ -244,6 +263,7 @@ class rlr:
         if raw_or_grouped == "raw":
             return {'l_rec': l_rec_data, 'r_rec': r_rec_data}
         elif raw_or_grouped == "grouped":
+            assert self.var_schema_loaded, "Must set the variable comparison schema before grouping data."
             # Process raw data into data grouped according to var_schema
             rec_data_grouped = []
             for var_group in self.var_schema:
@@ -257,11 +277,14 @@ class rlr:
             raise NotImplementedError(f"")
 
     def get_var_comp_schema(self):
-        return self.var_schema
+        if self.var_schema_loaded:
+            return self.var_schema
+        else:
+            return None
     
     def CL_print_comparison_var_group(self, var_group_data, table_width = None, margin = 0):
         """ Prints a single variable group of a comparison to the command line """
-        # IF bo table width is passed, use the default line width
+        # If no table width is passed, use the default line width
         if table_width is None: table_width = self.COMP_DEFAULT_LINE_WIDTH
         # Calculate the column widths and number or rows needed
         l_col_width = int(table_width*self.COMP_PRINT_COL_WEIGHT[0])-1
@@ -295,6 +318,7 @@ class rlr:
     def CL_print_comparison_full(self, comp_ind, table_width = None, margin = 0):
         """ Prints out the full comparison (based on var_schema) between the
             records identified in the passed index (of comp_df)"""
+        assert self.ready_to_review, "Must load all data, comparison files, and var schema before reviewing."
         # First get the associated grouped data of the pair (and exit if not found)
         val_groups = self.get_comp_pair("grouped", comp_ind)
         if val_groups is None:
@@ -370,6 +394,7 @@ class rlr:
                 detailed: bool, optional
                     Default is to print coutns of each label, detailed includes every specific label
         """
+        assert self.comps_loaded, "Must have a comparison file loaded before generating a summary"
         # Sets default line width
         if line_width is None: line_width = self.COMP_DEFAULT_LINE_WIDTH
 
@@ -432,8 +457,8 @@ class rlr:
 
         """
         # Verifies that datasets and comparison files and choices have all been set
-        if (self.dataL is None) or (self.dataR is None) or (self.comp_df is None) or (self.label_choices is None):
-            warnings.warn("Cannot review a comparison when datasets, comparison pairs, and/or choices have not been set")
+        if not self.ready_to_review:
+            warnings.warn("Cannot review a comparison when datasets, comparison pairs, var schema, and/or choices have not been set")
             return None
 
         # Sets default comparison index (and table_width) and checks if valid 
@@ -550,8 +575,8 @@ class rlr:
 
         """
         # Verifies that datasets and comparison files and choices have all been set
-        if (self.dataL is None) or (self.dataR is None) or (self.comp_df is None) or (self.label_choices is None):
-            warnings.warn("Cannot review a comparison when datasets, comparison pairs, and/or choices have not been set")
+        if not self.ready_to_review:
+            warnings.warn("Cannot review a comparison when datasets, comparison pairs, var schema, and/or choices have not been set")
             return None
 
         # Sets default line_width
@@ -601,8 +626,8 @@ class rlr:
                     to. If nothing is passed it uses the same path as original comparison file
         """
         # Verifies that datasets and comparison files and choices have all been set
-        if (self.dataL is None) or (self.dataR is None) or (self.comp_df is None) or (self.label_choices is None):
-            warnings.warn("Cannot save a label when datasets, comparison pairs, and/or choices have not been set")
+        if not self.ready_to_review:
+            warnings.warn("Cannot save a label when datasets, comparison pairs, var schema, and/or choices have not been set")
             return
 
         # Sets default comparison index
