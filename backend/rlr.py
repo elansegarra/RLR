@@ -113,11 +113,19 @@ class rlr:
         # Check that data has already been loaded
         assert self.dataL_loaded, "Load a data file before loading a comparison file"
         assert self.dataR_loaded, "Load a data file before loading a comparison file"
-        # Validate file format and load the file
-        data_ext = os.path.splitext(comp_pairs_path)[1]
-        if      data_ext == ".csv":   comp_df = pd.read_csv(comp_pairs_path)
-        elif    data_ext == ".dta":   comp_df = pd.read_stata(comp_pairs_path)
-        else:   raise NotImplementedError(f"Filetype of {data_ext} must be either csv or dta")
+
+        # Check if passed object was a str (ie path) or dataframe
+        if isinstance(comp_pairs_path, str):
+            data_ext = os.path.splitext(comp_pairs_path)[1]
+            # Check for file and file type, then load each file into a df
+            if      data_ext == ".csv":   comp_df = pd.read_csv(comp_pairs_path)
+            elif    data_ext == ".dta":   comp_df = pd.read_stata(comp_pairs_path)
+            else:                           
+                raise NotImplementedError(f"Filetype of {comp_pairs_path} must be either .csv or .dta")
+        elif isinstance(comp_pairs_path, pd.DataFrame):
+            comp_df = comp_pairs_path
+        else:
+            raise NotImplementedError("Must pass either a str path or a dataframe to load_comp_pairs")
         
         # Check that ids in the file are found in the data files
         l_ids_exist = pd.Series(self.id_vars_l).isin(comp_df.columns).all()
