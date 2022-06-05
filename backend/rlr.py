@@ -50,16 +50,22 @@ class rlr:
         """ Loads two data sets and specifies the id variables in each 
         
         Args:
-            data_path: (str) path to data set file (either csv or dta)
+            data_path: (str or dataframe) path to data set file (either csv or dta) or the dataframe itself
             id_vars: (str or list of str) variables that uniquely define a record in data set
             side: (str) Either 'l' or 'r' indicating which side is being loaded
         """
-        # Check for file and file type, then load each file into a df
-        data_ext = os.path.splitext(data_path)[1]
-        if      data_ext == ".csv":   data_df = pd.read_csv(data_path)
-        elif    data_ext == ".dta":   data_df = pd.read_stata(data_path)
-        else:                           
-            raise NotImplementedError(f"Filetype of {data_path} must be either csv or dta")
+        # Check if passed object was a str (ie path) or dataframe
+        if isinstance(data_path, str):
+            data_ext = os.path.splitext(data_path)[1]
+            # Check for file and file type, then load each file into a df
+            if      data_ext == ".csv":   data_df = pd.read_csv(data_path)
+            elif    data_ext == ".dta":   data_df = pd.read_stata(data_path)
+            else:                           
+                raise NotImplementedError(f"Filetype of {data_path} must be either .csv or .dta")
+        elif isinstance(data_path, pd.DataFrame):
+            data_df = data_path
+        else:
+            raise NotImplementedError("Must pass either a str path or a dataframe to load_dataset")
         
         # Standardize ids and side and check the value of side
         if isinstance(id_vars, str): id_vars = [id_vars] # Convert to list if a string
