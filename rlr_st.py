@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
+from backend.rlr import rlr
 
-# To run from command line (in lib folder): "streamlit run rlr_st.py --server.port 8889"
+# To run from command line (in root folder): "streamlit run rlr_st.py --server.port 8889"
 
 st.set_page_config(page_title="RLR: Record Linkage Review",  #page_icon=im, 
                     layout="centered", initial_sidebar_state="auto", menu_items=None)
@@ -87,4 +88,4 @@ else:
                             on_click=next_pair)
     
     st.write("Current Variable Group Schema")
-    st.write(st.session_state['var_group_schema'])
+    # st.write(st.session_state['var_group_schema'])
