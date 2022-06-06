@@ -3,6 +3,8 @@ import streamlit as st
 import pandas as pd
 from backend.rlr import rlr
 
+st.set_page_config(page_title="RLR: Linkage Review", page_icon="📈")
+
 ###########################################################################
 #### Function Definitions #################################################
 ###########################################################################

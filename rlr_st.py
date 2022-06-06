@@ -4,7 +4,7 @@ from backend.rlr import rlr
 
 # To run from command line (in root folder): "streamlit run rlr_st.py --server.port 8889"
 
-st.set_page_config(page_title="RLR: Record Linkage Review",  #page_icon=im, 
+st.set_page_config(page_title="RLR: Record Linkage Review", page_icon="📈", 
                     layout="centered", initial_sidebar_state="auto", menu_items=None)
 
 ###########################################################################

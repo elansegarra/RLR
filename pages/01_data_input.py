@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import json
 
+st.set_page_config(page_title="RLR: Data Input", page_icon="📈")
+
 ###########################################################################
 #### Function Definitions #################################################
 ###########################################################################
