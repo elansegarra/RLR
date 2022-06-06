@@ -11,7 +11,7 @@ def remove_comp_file():
     st.session_state['rlr'].comps_loaded = False
     st.session_state['rlr'].comp_df = None
     st.session_state['rlr'].ready_to_review = False
-    
+
 def tformat(text, align='C', el='p'):
     align_dict = {'L':'left', 'C':'center','R':'right'}
     return(f"<{el} style='text-align: {align_dict[align]};'>{text}</{el}>")
@@ -88,7 +88,6 @@ if (st.session_state['rlr'].ready_to_review):
     curr_comp_index = st.session_state['rlr'].curr_comp_pair_index
     num_comparisons = st.session_state['rlr'].comp_df.shape[0]
 
-
     # Data Comparison Titles
     comp_heading_text = f"Linkage {curr_comp_index+1}/{num_comparisons}"
     st.markdown(tformat(comp_heading_text, el = 'h3'),  unsafe_allow_html=True)
@@ -108,6 +107,13 @@ if (st.session_state['rlr'].ready_to_review):
         for val in var_group['rvals']:
             Rcol.markdown(tformat(str(val),'L'),  unsafe_allow_html=True)
 
+    # Print any note associated with this comparison pair
+    note_col = st.session_state['rlr'].REV_NOTE_COL
+    old_note = st.session_state['rlr'].comp_df.loc[curr_comp_index, note_col]
+    new_note = st.text_input("Note:", value = old_note, key = f"note_{curr_comp_index}")
+    # st.session_state['rlr'].comp_df.loc[curr_comp_index, note_col] = new_note
+    st.session_state['rlr'].save_label_or_note(new_note, 'note', delay_file_save = True)
+
     # Grab the label choices and the label for current comparison
     choices = ["No Label"] + st.session_state['rlr'].get_label_choices()
     label_col = st.session_state['rlr'].REV_LABEL_COL
@@ -119,15 +125,18 @@ if (st.session_state['rlr'].ready_to_review):
         curr_label_ind = 0
 
     # Display buttons for link determinations
-    prev_col, choice_col, next_col = st.columns([1,4,1])
-    prev = prev_col.button("<< Previous", 
-                            disabled=(curr_comp_index==0), 
-                            on_click=prev_pair)
-    choice_col.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content: center;} </style>', unsafe_allow_html=True)
-    choice_col.radio("Choose link determinations:", choices, index = curr_label_ind)
-    prev = next_col.button("Next >>", 
-                            disabled=(curr_comp_index==num_comparisons-1),
-                            on_click=next_pair)
+    prev_col, sp_1, choice_col, sp_2, next_col = st.columns([1,1,2,1,1])
+    prev_col.button("<< Previous Pair", disabled=(curr_comp_index==0), on_click=prev_pair)
+    prev_col.button("<< Previous Unlabeled")
+    # choice_col.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content: center;} </style>', unsafe_allow_html=True)
+    new_label = choice_col.radio("Choose label determination:", choices,
+                                key = f"lab_choices_{curr_comp_index}",
+                                index = curr_label_ind)
+    next_col.button("Next Pair >>", disabled=(curr_comp_index==num_comparisons-1), on_click=next_pair)
+    next_col.button("Next Unlabeled >>")
+    # Save the label choice to rlr instance
+    if new_label == "No Label": new_label = ""
+    st.session_state['rlr'].save_label_or_note(new_label, 'label', delay_file_save = True)
 else:
     st.write("Not all pieces necessary for review have been initialized:")
     # Check which parts are not yet initialized
