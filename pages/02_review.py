@@ -1,3 +1,4 @@
+from fileinput import filename
 import streamlit as st
 import pandas as pd
 from backend.rlr import rlr
@@ -33,6 +34,8 @@ def prev_pair():
 # Initializing rlr backend if not done already
 if 'rlr' not in st.session_state:
     st.session_state['rlr'] = rlr()
+if 'review_file_name' not in st.session_state:
+    st.session_state['review_file_name'] = "labeled_data.csv"
 
 with st.sidebar:
     st.header("Load Review File")
@@ -54,6 +57,7 @@ with st.sidebar:
                 msg = "Successfully loaded a file for review."
                 msg_text = f'<p style="color:Green;">{msg}</p>'
                 st.markdown(msg_text, unsafe_allow_html=True)
+                st.session_state['review_file_name'] = review_file.name
 
     # Display information if a file has been loaded
     if (st.session_state['rlr'].comps_loaded) or (review_file is not None):
@@ -66,6 +70,7 @@ with st.sidebar:
         l_counts_df['%'] = l_counts_df['%'].round(1)
         st.dataframe(l_counts_df)
     
+    # Display and allow editing of current label choices
     st.header("Label Choices")
     new_label_choices = []
     curr_labels = "\n".join(st.session_state['rlr'].label_choices)
@@ -73,6 +78,17 @@ with st.sidebar:
     st.session_state['rlr'].set_label_choices(new_labels.split('\n'))
     # st.session_state['rlr'].label_choices = new_labels.split('\n')
     st.write("")
+
+    # Download buttons to save linkage review results
+    if (st.session_state['rlr'].comps_loaded):
+        st.header("Download Labeled Data")
+        comp_data = st.session_state['rlr'].comp_df.to_csv().encode('utf-8')
+        col1, col2 = st.columns(2)
+        col1.download_button("Download csv", comp_data, file_name = st.session_state['review_file_name'],
+                            mime = 'text/csv')
+        col2.download_button("Download dta", comp_data, file_name = st.session_state['review_file_name'],
+                            mime = 'text/csv')
+        st.write("")
 
 ###########################################################################
 #### App - Review #########################################################
@@ -137,6 +153,9 @@ if (st.session_state['rlr'].ready_to_review):
     # Save the label choice to rlr instance
     if new_label == "No Label": new_label = ""
     st.session_state['rlr'].save_label_or_note(new_label, 'label', delay_file_save = True)
+
+    # Note about local version of data
+    st.write("Note: All labels and notes are only stored temporarily in browser cache. To save locally use the download button in the sidebar.")
 else:
     st.write("Not all pieces necessary for review have been initialized:")
     # Check which parts are not yet initialized
