@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import json
 
 ###########################################################################
 #### Function Definitions #################################################
@@ -29,6 +30,25 @@ def del_var_group(vargp_index):
     var_comp_schema = st.session_state['rlr'].get_var_comp_schema()
     del var_comp_schema[vargp_index]
     st.session_state['rlr'].set_var_comp_schema(var_comp_schema)
+
+###########################################################################
+#### App - Sidebar ########################################################
+###########################################################################
+
+with st.sidebar:
+    input_mech_options = ['Load Piecmeal', 'Local Data Folder']
+    input_mech = st.radio("Input Mechanism", input_mech_options)
+
+    # Display upload for entire review packet
+    rev_packet = st.file_uploader("Upload Review Packet", key = "rev_packet_file",
+                                    accept_multiple_files=False, type = ['json'])
+    if rev_packet is None:
+        st.write("")
+    else:
+        # Open the review packet file and load the dictionary into RLR
+        rev_packet_dict = json.load(rev_packet)
+        st.session_state['rlr'].load_review_packet(rev_packet_dict)
+        # st.write(rev_packet_dict)
 
 ###########################################################################
 #### App - Inputting Data Files ###########################################
@@ -137,7 +157,7 @@ if (st.session_state['rlr'].dataL_loaded) and (st.session_state['rlr'].dataR_loa
     # Iterate through each var group and print out related inputs
     for i in range(len(var_comp_schema)):
         var_group = var_comp_schema[i].copy()
-        with st.expander(f"Var. Group: {var_group['name']}", expanded = var_group['name']==""):
+        with st.expander(f"Var. Group: {var_group['name']}", expanded = True):
             col_1, col_2 = st.columns([1,3])
             var_name = col_1.text_input("Var. Group Name:", value = var_group['name'], key = f"vargp_{i}_name")
             vars_l = col_2.multiselect("Pick Vars from Left Data Set:", l_vars,
