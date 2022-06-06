@@ -679,17 +679,16 @@ class rlr:
         if label_or_note == 'label':
             # Check that label is valid and comp_ind is valid
             assert text in [""]+self.label_choices, f"Label passed ({text}) is not among valid choices"
-            # Update comparison df with the label (and associated columns)
+            # Update comparison df with the label and the indicator column
             self.comp_df.loc[comp_ind,self.REV_LABEL_COL] = text
-            self.comp_df.loc[comp_ind,self.REV_LABEL_IND_COL] = 1
+            self.comp_df.loc[comp_ind,self.REV_LABEL_IND_COL] = 1 if (text != "") else 0
         elif label_or_note == 'note':
-            # Update comparison df with the label (and associated columns)
+            # Update comparison df with the note
             self.comp_df.loc[comp_ind,self.REV_NOTE_COL] = text
-            self.comp_df.loc[comp_ind,self.REV_LABEL_IND_COL] = 1
         else:
             raise NotImplementedError(f"Unrecognized value of 'label_or_note' ({label_or_note}) in function.")
 
-        # Update the changed variable
+        # Update the comparison df changed timestamp variable
         self.comp_df.loc[comp_ind,self.REV_DATE_COL] = datetime.datetime.now()
 
         # Save the comparison dataframe (if not delayed)
