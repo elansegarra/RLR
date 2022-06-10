@@ -24,10 +24,36 @@ def next_pair():
     if st.session_state['rlr'].curr_comp_pair_index < st.session_state['rlr'].comp_df.shape[0]-1:
         st.session_state['rlr'].curr_comp_pair_index += 1
 
+def next_unlabeled_pair():
+    """ Move to next comparison that is unlabeled if not at end """
+    if st.session_state['rlr'].curr_comp_pair_index == st.session_state['rlr'].comp_df.shape[0]-1:
+        return
+    # Iterate until we find unlabeled comparison or the end of comparison list
+    label_col = st.session_state['rlr'].REV_LABEL_COL
+    curr_ind = st.session_state['rlr'].curr_comp_pair_index + 1
+    curr_label = st.session_state['rlr'].comp_df.loc[curr_ind, label_col]
+    while (curr_ind < st.session_state['rlr'].comp_df.shape[0]-1) and (curr_label != ""):
+        curr_ind += 1
+        curr_label = st.session_state['rlr'].comp_df.loc[curr_ind, label_col]
+    st.session_state['rlr'].curr_comp_pair_index = curr_ind
+
 def prev_pair():
     """ Move to previous comparison if not at beginning """
     if st.session_state['rlr'].curr_comp_pair_index > 0:
         st.session_state['rlr'].curr_comp_pair_index -= 1
+
+def prev_unlabeled_pair():
+    """ Move to previous comparison that is unlabeled if not at beginning """
+    if st.session_state['rlr'].curr_comp_pair_index <= 0:
+        return
+    # Iterate until we find unlabeled comparison or the end of comparison list
+    label_col = st.session_state['rlr'].REV_LABEL_COL
+    curr_ind = st.session_state['rlr'].curr_comp_pair_index - 1
+    curr_label = st.session_state['rlr'].comp_df.loc[curr_ind, label_col]
+    while (curr_ind > 0) and (curr_label != ""):
+        curr_ind -= 1
+        curr_label = st.session_state['rlr'].comp_df.loc[curr_ind, label_col]
+    st.session_state['rlr'].curr_comp_pair_index = curr_ind
 
 ###########################################################################
 #### App - Sidebar ########################################################
@@ -149,15 +175,16 @@ if (st.session_state['rlr'].ready_to_review):
         curr_label_ind = 0
 
     # Display buttons for link determinations
-    prev_col, sp_1, choice_col, sp_2, next_col = st.columns([1,1,2,1,1])
+    prev_col, sp_1, choice_col, sp_2, next_col = st.columns([2.5,1,2,1,2.5])
     prev_col.button("<< Previous Pair", disabled=(curr_comp_index==0), on_click=prev_pair)
-    prev_col.button("<< Previous Unlabeled")
+    prev_col.button("<< Previous Unlabeled", disabled=(curr_comp_index==0), on_click=prev_unlabeled_pair)
     # choice_col.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content: center;} </style>', unsafe_allow_html=True)
     new_label = choice_col.radio("Choose label determination:", choices,
                                 key = f"lab_choices_{curr_comp_index}",
                                 index = curr_label_ind)
     next_col.button("Next Pair >>", disabled=(curr_comp_index==num_comparisons-1), on_click=next_pair)
-    next_col.button("Next Unlabeled >>")
+    next_col.button("Next Unlabeled >>", disabled=(curr_comp_index==num_comparisons-1),
+                        on_click=next_unlabeled_pair)
     # Save the label choice to rlr instance
     if new_label == "No Label": new_label = ""
     st.session_state['rlr'].save_label_or_note(new_label, 'label')
