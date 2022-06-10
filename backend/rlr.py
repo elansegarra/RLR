@@ -22,6 +22,7 @@ class rlr:
                             "(A) Annotate", "(S) Summary", "(E) Exit"]
     ADDTL_OPTION_TAGS = [text[1].lower() for text in ADDTL_OPTION_TEXTS]
     DEFAULT_LABELS = ["Match", "Not a Match"]
+    DEFAULT_AUTOSAVE = False
 
     def __init__(self, rev_packet_path = None):
         self.dataL_loaded = False
@@ -30,6 +31,7 @@ class rlr:
         self.var_schema_loaded = False
         self.ready_to_review = False
         self.label_choices = self.DEFAULT_LABELS
+        self.autosave = self.DEFAULT_AUTOSAVE
 
         # Load all the parameters in the review packet if passed
         if rev_packet_path is not None:
@@ -242,6 +244,15 @@ class rlr:
         assert isinstance(label_choices, list), f"The object passed to 'label_choices' is not a list"
         assert len(label_choices)>0, f"The passed list of label choices must be non-empty"
         self.label_choices = [str(opt) for opt in label_choices]
+
+    def set_autosave(self, autosave_bool):
+        """ Sets autosaving on or off """
+        assert isinstance(autosave_bool, bool), "Argument to set_autosave must be a boolean"
+        # Need to have a comp_file path to turn autosave on
+        if (autosave_bool == True) and (self.comp_pairs_file_path is None):
+            warnings.warn("Cannot turn on autosave when there is no file path for comparison file")
+        else:
+            self.autosave = autosave_bool
 
     def get_comp_pair(self, raw_or_grouped, comp_ind = None):
         """ Returns a dictionary of the data in the current comparison pair
@@ -654,7 +665,7 @@ class rlr:
         else:   raise NotImplementedError(f"Filetype of {data_ext} must be either csv or dta")
 
     def save_label_or_note(self, text, label_or_note = 'label', comp_ind = None, 
-                            comp_pairs_path = None, delay_file_save = False):
+                            comp_pairs_path = None):
         """ Validates and saves the label choice or note to the indicated comparison pair. 
         
             Args:
@@ -668,9 +679,6 @@ class rlr:
                 comp_pairs_path: string, optional
                     Filename (and path) that the current version of the comp_df will be saved
                     to. If nothing is passed it uses the same path as original comparison file
-                delay_file_save: bool, optional
-                    Indicates whether to delay saving to the attached csv and just keep changes
-                    locally in self.comp_df
         """
         # Verifies that datasets and comparison files and choices have all been set
         if not self.ready_to_review:
@@ -701,7 +709,7 @@ class rlr:
         self.comp_df.loc[comp_ind,self.REV_DATE_COL] = datetime.datetime.now()
 
         # Save the comparison dataframe (if not delayed)
-        if not delay_file_save:
+        if (self.autosave):
             self.save_comp_df(comp_pairs_path = comp_pairs_path)
 
     def get_review_packet(self):

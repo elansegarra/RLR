@@ -63,6 +63,12 @@ with st.sidebar:
 
     # Display information if a file has been loaded
     if (st.session_state['rlr'].comps_loaded) or (review_file is not None):
+        # Check box for auto saving label
+        autosave_val = st.checkbox("Autosave Labels", value = st.session_state['rlr'].autosave,
+                help = "Automatically save labels and notes to comparison file as they are changed")
+        if (autosave_val != st.session_state['rlr'].autosave):
+            st.session_state['rlr'].set_autosave(autosave_val)
+
         # Gather label counts and display a summary
         st.subheader("File Label Summary")
         l_counts = st.session_state['rlr'].get_label_counts()
@@ -130,7 +136,7 @@ if (st.session_state['rlr'].ready_to_review):
     old_note = st.session_state['rlr'].comp_df.loc[curr_comp_index, note_col]
     new_note = st.text_input("Note:", value = old_note, key = f"note_{curr_comp_index}")
     # st.session_state['rlr'].comp_df.loc[curr_comp_index, note_col] = new_note
-    st.session_state['rlr'].save_label_or_note(new_note, 'note', delay_file_save = True)
+    st.session_state['rlr'].save_label_or_note(new_note, 'note')
 
     # Grab the label choices and the label for current comparison
     choices = ["No Label"] + st.session_state['rlr'].get_label_choices()
@@ -154,7 +160,7 @@ if (st.session_state['rlr'].ready_to_review):
     next_col.button("Next Unlabeled >>")
     # Save the label choice to rlr instance
     if new_label == "No Label": new_label = ""
-    st.session_state['rlr'].save_label_or_note(new_label, 'label', delay_file_save = True)
+    st.session_state['rlr'].save_label_or_note(new_label, 'label')
 
     # Note about local version of data
     st.write("Note: All labels and notes are only stored temporarily in browser cache. To save locally use the download button in the sidebar.")
