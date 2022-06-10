@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import json
+import json, io
 
 st.set_page_config(page_title="RLR: Data Input", page_icon="📈")
 
@@ -51,6 +51,17 @@ with st.sidebar:
         rev_packet_dict = json.load(rev_packet)
         st.session_state['rlr'].load_review_packet(rev_packet_dict)
         # st.write(rev_packet_dict)
+    
+    # Download buttons to save a review packet
+    if (st.session_state['rlr'].ready_to_review):
+        rev_dict = st.session_state['rlr'].get_review_packet()
+        if rev_dict is not None:
+            st.write("Download Review Packet")
+            with io.BytesIO() as buffer:
+                buffer.write(json.dumps(rev_dict, indent = 4).encode())
+                st.download_button("Download json", buffer, 
+                                    file_name = "review_packet.json")
+                st.write("")
 
 ###########################################################################
 #### App - Inputting Data Files ###########################################
