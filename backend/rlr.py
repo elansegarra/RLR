@@ -56,6 +56,7 @@ class rlr:
         """
         # Check if passed object was a str (ie path) or dataframe
         if isinstance(data_path, str):
+            path_was_passed = True
             data_ext = os.path.splitext(data_path)[1]
             # Check for file and file type, then load each file into a df
             if      data_ext == ".csv":   data_df = pd.read_csv(data_path)
@@ -63,6 +64,7 @@ class rlr:
             else:                           
                 raise NotImplementedError(f"Filetype of {data_path} must be either .csv or .dta")
         elif isinstance(data_path, pd.DataFrame):
+            path_was_passed = False
             data_df = data_path
         else:
             raise NotImplementedError("Must pass either a str path or a dataframe to load_dataset")
@@ -90,6 +92,8 @@ class rlr:
             self.dataL = data_df
             self.dataL_loaded = True
             self.dataL.set_index(self.id_vars_l, inplace=True, drop=False)
+            if path_was_passed: self.dataL_file_path = data_path
+            else:               self.dataL_file_path = None
         if side == 'r':
             ids_exist = pd.Series(id_vars).isin(data_df.columns).all()
             assert  ids_exist, f"id_vars_r ({id_vars}) not found in the right data set"
@@ -98,6 +102,8 @@ class rlr:
             self.dataR = data_df
             self.dataR_loaded = True
             self.dataR.set_index(self.id_vars_r, inplace=True, drop=False)
+            if path_was_passed: self.dataR_file_path = data_path
+            else:               self.dataR_file_path = None
         # Flag that var schema and comp_df has to be added again (since data might have changed)
         self.var_schema_loaded = False
         self.comps_loaded = False
@@ -116,6 +122,7 @@ class rlr:
 
         # Check if passed object was a str (ie path) or dataframe
         if isinstance(comp_pairs_path, str):
+            path_was_passed = True
             data_ext = os.path.splitext(comp_pairs_path)[1]
             # Check for file and file type, then load each file into a df
             if      data_ext == ".csv":   comp_df = pd.read_csv(comp_pairs_path)
@@ -123,6 +130,7 @@ class rlr:
             else:                           
                 raise NotImplementedError(f"Filetype of {comp_pairs_path} must be either .csv or .dta")
         elif isinstance(comp_pairs_path, pd.DataFrame):
+            path_was_passed = False
             comp_df = comp_pairs_path
         else:
             raise NotImplementedError("Must pass either a str path or a dataframe to load_comp_pairs")
@@ -166,7 +174,8 @@ class rlr:
         self.comps_loaded = True
         self.check_ready_to_review()
         self.curr_comp_pair_index = 0
-        self.comp_pairs_file_path = comp_pairs_path
+        if path_was_passed: self.comp_pairs_file_path = comp_pairs_path
+        else:               self.comp_pairs_file_path = None
     
     def load_review_packet(self, rev_packet):
         """ Loads all the review parameters found in the passed review packet 
@@ -694,6 +703,41 @@ class rlr:
         # Save the comparison dataframe (if not delayed)
         if not delay_file_save:
             self.save_comp_df(comp_pairs_path = comp_pairs_path)
+
+    def get_review_packet(self):
+        """ Creates and returns a review packet containing current parameters """
+        # Check that all pieces are present (should be review ready)
+        if not self.ready_to_review:
+            warnings.warn("Cannot save a review packet when datasets, comparison pairs, var schema, and/or choices have not been set")
+            return None
+        
+        # Check if any data files were not loaded by paths (cannot save review packet in these cases)
+        if (self.dataL_file_path is None) or (self.dataR_file_path is None) or (self.comp_pairs_file_path is None):
+            warnings.warn("One of the data files was loaded without a path, so a review packet cannot be saved.")
+            return None
+        
+        # Assemble the review packet
+        rev_packet = {'file_L': self.dataL_file_path,
+                        'file_L_ids': self.id_vars_l,
+                        'file_R': self.dataR_file_path,
+                        'file_R_ids': self.id_vars_r,
+                        'file_comps': self.comp_pairs_file_path,
+                        'var_group_schema': self.var_schema,
+                        'label_choices': self.label_choices}
+        
+        return rev_packet
+
+    def save_review_packet(self, rev_packet_path):
+        """ Saves current parameters to a review packet in the designated file path """
+        # Get the review packet
+        rev_packet_dict = self.get_review_packet()
+
+        if rev_packet_dict is None:
+            return
+        else:
+            # Save the review packet
+            with open(rev_packet_path, 'w') as fp:
+                json.dump(rev_packet_dict, fp, indent = 4)
 
 def main():
     # Check if a file was passed
