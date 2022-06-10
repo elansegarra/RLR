@@ -192,6 +192,7 @@ class rlr:
                     'file_comps': str path to the data file containing record pairs
                     'var_group_schema': dict of variable comparisons (see set_var_comp_schema)
                     'label_choices': list of str that make up the label choices
+            optional: 'curr_comp_pair_index': int of the current comparison index
         """
         # Validate the structure of the review packet file 
         nec_keys = ['file_L', 'file_L_ids', 'file_R', 'file_R_ids', 'file_comps', 
@@ -205,6 +206,11 @@ class rlr:
         self.load_comp_pairs(rev_packet['file_comps'])
         self.set_var_comp_schema(rev_packet['var_group_schema'])
         self.set_label_choices(rev_packet['label_choices'])
+        if 'curr_comp_pair_index' in rev_packet:
+            rev_ind = rev_packet['curr_comp_pair_index']
+            # Set to the current comparison index to this index if it is valid
+            if (0 <= rev_ind <= self.comp_df.shape[0]-1):
+                self.curr_comp_pair_index = rev_ind
         self.check_ready_to_review()
 
     def set_var_comp_schema(self, var_schema):
@@ -731,7 +737,8 @@ class rlr:
                         'file_R_ids': self.id_vars_r,
                         'file_comps': self.comp_pairs_file_path,
                         'var_group_schema': self.var_schema,
-                        'label_choices': self.label_choices}
+                        'label_choices': self.label_choices,
+                        'curr_comp_pair_index': self.curr_comp_pair_index}
         
         return rev_packet
 
