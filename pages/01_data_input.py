@@ -92,7 +92,7 @@ with st.expander("Left Data Set:", expanded = True):
             st.dataframe(dfL.head())
 
             # Let the user determine which fields make up the row id
-            dfL_id_vars = st.multiselect("Choose which fields uniquely identify rows:", dfL.columns)
+            dfL_id_vars = st.multiselect("Choose which fields uniquely identify rows:", dfL.columns, key = "L_file_ids")
             
             # Verify that passed variables uniquely identify a row
             if len(dfL_id_vars) == 0:
@@ -135,7 +135,7 @@ with st.expander("Right Data Set:", expanded = True):
             st.dataframe(dfR.head())
 
             # Let the user determine which fields make up the row id
-            dfR_id_vars = st.multiselect("Choose which fields uniquely identify rows:", dfR.columns)
+            dfR_id_vars = st.multiselect("Choose which fields uniquely identify rows:", dfR.columns, key = "R_file_ids")
             
             # Verify that passed variables uniquely identify a row
             if len(dfR_id_vars) == 0:
