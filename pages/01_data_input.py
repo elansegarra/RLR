@@ -87,7 +87,7 @@ with st.expander("Left Data Set:", expanded = True):
             if      data_ext == ".csv":   dfL = pd.read_csv(data_file_L)
             elif    data_ext == ".dta":   dfL = pd.read_stata(data_file_L)
             else:                           
-                raise NotImplementedError(f"Filetype of {data_path} must be either .csv or .dta")
+                raise NotImplementedError(f"Filetype of {data_file_L.name} must be either .csv or .dta")
             # Print the first few rows
             st.dataframe(dfL.head())
 
@@ -130,7 +130,7 @@ with st.expander("Right Data Set:", expanded = True):
             if      data_ext == ".csv":   dfR = pd.read_csv(data_file_R)
             elif    data_ext == ".dta":   dfR = pd.read_stata(data_file_R)
             else:                           
-                raise NotImplementedError(f"Filetype of {data_path} must be either .csv or .dta")
+                raise NotImplementedError(f"Filetype of {data_file_R.name} must be either .csv or .dta")
             # Print the first few rows
             st.dataframe(dfR.head())
 

@@ -2,6 +2,7 @@ from fileinput import filename
 import streamlit as st
 import pandas as pd
 from backend.rlr import rlr
+import os
 
 st.set_page_config(page_title="RLR: Linkage Review", page_icon="📈")
 
@@ -78,8 +79,14 @@ with st.sidebar:
         if review_file is None:
                 st.write("")
         else:
+            # Open the data linkage file (after determining type)
+            data_ext = os.path.splitext(review_file.name)[1]
+            if      data_ext == ".csv":   df_review = pd.read_csv(review_file)
+            elif    data_ext == ".dta":   df_review = pd.read_stata(review_file)
+            else:                           
+                raise NotImplementedError(f"Filetype of {review_file.name} must be either .csv or .dta")
+
             # Load the passed file of comparison linkages
-            df_review = pd.read_csv(review_file)
             st.session_state['rlr'].load_comp_pairs(df_review)
             if st.session_state['rlr'].comps_loaded:
                 msg = "Successfully loaded a file for review."
