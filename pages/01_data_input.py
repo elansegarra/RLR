@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import json, io
+import json, io, os
 
 st.set_page_config(page_title="RLR: Data Input", page_icon="📈")
 
@@ -82,8 +82,13 @@ with st.expander("Left Data Set:", expanded = True):
         if data_file_L is None:
             st.write("")
         else:
-            # Open the data file and print the first few rows
-            dfL = pd.read_csv(data_file_L)
+            # Open the data file (after determining type)
+            data_ext = os.path.splitext(data_file_L.name)[1]
+            if      data_ext == ".csv":   dfL = pd.read_csv(data_file_L)
+            elif    data_ext == ".dta":   dfL = pd.read_stata(data_file_L)
+            else:                           
+                raise NotImplementedError(f"Filetype of {data_path} must be either .csv or .dta")
+            # Print the first few rows
             st.dataframe(dfL.head())
 
             # Let the user determine which fields make up the row id
@@ -120,8 +125,13 @@ with st.expander("Right Data Set:", expanded = True):
         if data_file_R is None:
             st.write("")
         else:
-            # Open the data file and print the first few rows
-            dfR = pd.read_csv(data_file_R)
+            # Open the data file (after determining type)
+            data_ext = os.path.splitext(data_file_R.name)[1]
+            if      data_ext == ".csv":   dfR = pd.read_csv(data_file_R)
+            elif    data_ext == ".dta":   dfR = pd.read_stata(data_file_R)
+            else:                           
+                raise NotImplementedError(f"Filetype of {data_path} must be either .csv or .dta")
+            # Print the first few rows
             st.dataframe(dfR.head())
 
             # Let the user determine which fields make up the row id
