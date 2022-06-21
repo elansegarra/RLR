@@ -22,7 +22,7 @@ class rlr:
                             "(A) Annotate", "(S) Summary", "(E) Exit"]
     ADDTL_OPTION_TAGS = [text[1].lower() for text in ADDTL_OPTION_TEXTS]
     DEFAULT_LABELS = ["Match", "Not a Match"]
-    DEFAULT_AUTOSAVE = False
+    DEFAULT_AUTOSAVE = True
 
     def __init__(self, rev_packet_path = None):
         self.dataL_loaded = False
