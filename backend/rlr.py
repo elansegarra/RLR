@@ -156,6 +156,8 @@ class rlr:
             comp_df[self.REV_LABEL_IND_COL] = 0
         for comp_var in [self.REV_LABEL_COL, self.REV_DATE_COL, self.REV_NOTE_COL]:
             if comp_var not in comp_df: comp_df[comp_var] = ""
+        # Convert modified column to proper datetime object
+        comp_df[self.REV_DATE_COL] = pd.to_datetime(comp_df[self.REV_DATE_COL])
         
         # Check that id value pairs are found in the data files (assuming a positive threshhold)
         num_missing = 0
