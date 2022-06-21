@@ -70,7 +70,10 @@ with st.sidebar:
     st.header("Load Review File")
     # Checking if it has already been loaded
     if st.session_state['rlr'].comps_loaded:
-        st.write("Comparison File Loaded")
+        if st.session_state['rlr'].comp_pairs_file_path is not None:
+            filename = st.session_state['rlr'].comp_pairs_file_path
+        else: filename = "File name unknown"
+        st.write(f"Comparison File Loaded: {filename}")
         st.button("Load a different comparison file", key = "reload", on_click = remove_comp_file)
     else:
         # Ask for file upload from user
