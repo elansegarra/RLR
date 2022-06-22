@@ -23,7 +23,7 @@ def remove_data_file(side):
 
 def add_var_group():
     # Add empty var group to end of list of the variable group schema
-    var_comp_schema = st.session_state['rlr'].get_var_comp_schema()
+    var_comp_schema = [vgroup.copy() for vgroup in st.session_state['rlr'].get_var_comp_schema()]
     var_comp_schema.append({'name': "", 'lvars': [], 'rvars': []})
     st.session_state['rlr'].set_var_comp_schema(var_comp_schema)
 
@@ -37,8 +37,12 @@ def del_var_group(vargp_index):
 #### App - Sidebar ########################################################
 ###########################################################################
 
+# initialize session state variable (for tracking when new rev packets are loaded)
+if 'last_rev_packet' not in st.session_state:
+    st.session_state['last_rev_packet'] = None
+
 with st.sidebar:
-    input_mech_options = ['Load Piecmeal', 'Local Data Folder']
+    input_mech_options = ['Drag and Drop Files', 'Local Data Folder']
     input_mech = st.radio("Input Mechanism", input_mech_options)
 
     # Display upload for entire review packet
@@ -47,10 +51,14 @@ with st.sidebar:
     if rev_packet is None:
         st.write("")
     else:
-        # Open the review packet file and load the dictionary into RLR
-        rev_packet_dict = json.load(rev_packet)
-        st.session_state['rlr'].load_review_packet(rev_packet_dict)
-        # st.write(rev_packet_dict)
+        # Check if this is a new packet (or one already loaded)
+        new_packet_loaded = (st.session_state['last_rev_packet'] != rev_packet)
+        if new_packet_loaded:
+            # Open the review packet file and load the dictionary into RLR
+            rev_packet_dict = json.load(rev_packet)
+            st.session_state['rlr'].load_review_packet(rev_packet_dict)
+            st.session_state['last_rev_packet'] = rev_packet
+            # st.write(rev_packet_dict)
     
     # Download buttons to save a review packet
     if (st.session_state['rlr'].ready_to_review):
@@ -67,7 +75,7 @@ with st.sidebar:
 #### App - Inputting Data Files ###########################################
 ###########################################################################
 
-st.header("Data Loading and Initialization")
+st.header("Loading Left and Right Data Sets")
 with st.expander("Left Data Set:", expanded = True):
     # Checking if left data has already been loaded
     if st.session_state['rlr'].dataL_loaded:
@@ -157,7 +165,7 @@ with st.expander("Right Data Set:", expanded = True):
 #### App - Setting Up Variable Comparison Schema ##########################
 ###########################################################################
 
-st.header("Variable Comparison Group Definitions")
+st.header("Defining Variable Comparison Groups")
 # Checking if both data sets have been properly loaded
 if (st.session_state['rlr'].dataL_loaded) and (st.session_state['rlr'].dataR_loaded):
     # Input description
@@ -167,19 +175,20 @@ if (st.session_state['rlr'].dataL_loaded) and (st.session_state['rlr'].dataR_loa
                 "and 'last_name' in the right data set. Add or delete "+
                 "comparison groups as necessary.")
 
-    # Gather var schema from rlr instance if loaded
-    if (st.session_state['rlr'].var_schema_loaded):
-        var_comp_schema = st.session_state['rlr'].get_var_comp_schema()
-    else:
-        var_comp_schema = [{'name': "", 'lvars': [], 'rvars': []}]
-
     # Gathering variables from loaded dataset
     l_vars = st.session_state['rlr'].dataL.columns
     r_vars = st.session_state['rlr'].dataR.columns
 
+    # Gather var schema from rlr instance if loaded
+    if (st.session_state['rlr'].var_schema_loaded):
+        curr_var_comp_schema = [vgroup.copy() for vgroup in st.session_state['rlr'].get_var_comp_schema()]
+    else:
+        curr_var_comp_schema = [{'name': "", 'lvars': [], 'rvars': []}]
+
     # Iterate through each var group and print out related inputs
-    for i in range(len(var_comp_schema)):
-        var_group = var_comp_schema[i].copy()
+    new_var_comp_schema = []
+    for i in range(len(curr_var_comp_schema)):
+        var_group = curr_var_comp_schema[i].copy()
         with st.expander(f"Var. Group: {var_group['name']}", expanded = True):
             col_1, col_2 = st.columns([1,3])
             var_name = col_1.text_input("Var. Group Name:", value = var_group['name'], key = f"vargp_{i}_name")
@@ -189,8 +198,8 @@ if (st.session_state['rlr'].dataL_loaded) and (st.session_state['rlr'].dataR_loa
                                         default = var_group['rvars'], key = f"vargp_{i}_rvars")
             del_button = col_1.button("Delete Group", key = f"vargp_{i}_del",
                                         on_click = del_var_group, args=(i, ))
-            var_comp_schema[i] = {'name': var_name, 'lvars': vars_l, 'rvars': vars_r}
-    st.session_state['rlr'].set_var_comp_schema(var_comp_schema)
+            new_var_comp_schema.append({'name': var_name, 'lvars': vars_l, 'rvars': vars_r})
+    st.session_state['rlr'].set_var_comp_schema(new_var_comp_schema)
     add_button = st.button("Add Group", on_click = add_var_group)
 
     # st.write(st.session_state['rlr'].get_var_comp_schema())

@@ -242,7 +242,7 @@ class rlr:
             ids_exist = pd.Series(var_group['rvars']).isin(self.dataR.columns).all()
             assert  ids_exist, f"Schema variables ({var_group['rvars']}) not found in the right data set"
         # Save the variable schema to the class instance
-        self.var_schema = var_schema
+        self.var_schema = [var_group.copy() for var_group in var_schema]
         self.var_schema_loaded = True
         self.check_ready_to_review()
 
