@@ -88,6 +88,7 @@ st.markdown("""
          - **var_group_schema**: List of dictionaries where each element defines a variable group and has "name"
                 "lvars" and "rvars" as keys which identify the group label, left columns, and right columns in the 
                 group respectively.
+                
         It may also have the following optional keys:
          - **label_choices**: List of label options. If not specified it will default to ["Match", "Not a Match"].
 

@@ -115,10 +115,10 @@ with st.sidebar:
         st.dataframe(l_counts_df)
     
     # Display and allow editing of current label choices
-    st.header("Label Choices")
+    st.header("Change Label Choices")
     new_label_choices = []
     curr_labels = "\n".join(st.session_state['rlr'].label_choices)
-    new_labels = st.text_area("Enter choices (each line is a separate label)", value = curr_labels)
+    new_labels = st.text_area("Each line is a separate label choice", value = curr_labels)
     st.session_state['rlr'].set_label_choices(new_labels.split('\n'))
     # st.session_state['rlr'].label_choices = new_labels.split('\n')
     st.write("")
@@ -159,13 +159,13 @@ if (st.session_state['rlr'].ready_to_review):
     for var_group in curr_comp_data:
         Lcol, Mcol, Rcol = st.columns([4,1,4])
         # Print all data values in left column
-        for val in var_group['lvals']:
-            Lcol.markdown(tformat(str(val),'R'),  unsafe_allow_html=True)
+        l_val = "<br>".join([str(item) for item in var_group['lvals']])
+        Lcol.markdown(tformat(l_val,'R'),  unsafe_allow_html=True)
         # Print the name of the comparison group in the middle column
         Mcol.markdown(tformat(var_group['name']),  unsafe_allow_html=True)
-        # Print all data values in left column
-        for val in var_group['rvals']:
-            Rcol.markdown(tformat(str(val),'L'),  unsafe_allow_html=True)
+        # Print all data values in right column
+        r_val = "<br>".join([str(item) for item in var_group['rvals']])
+        Rcol.markdown(tformat(r_val,'L'),  unsafe_allow_html=True)
 
     # Print any note associated with this comparison pair
     note_col = st.session_state['rlr'].REV_NOTE_COL
