@@ -115,10 +115,9 @@ with st.sidebar:
         st.dataframe(l_counts_df)
     
     # Display and allow editing of current label choices
-    st.header("Change Label Choices")
     new_label_choices = []
     curr_labels = "\n".join(st.session_state['rlr'].label_choices)
-    new_labels = st.text_area("Each line is a separate label choice", value = curr_labels)
+    new_labels = st.text_area("Label Choices", help = "Edit the label choices here (each line is a separate label choice)", value = curr_labels)
     st.session_state['rlr'].set_label_choices(new_labels.split('\n'))
     # st.session_state['rlr'].label_choices = new_labels.split('\n')
     st.write("")
@@ -204,13 +203,15 @@ if (st.session_state['rlr'].ready_to_review):
 else:
     st.write("Not all pieces necessary for review have been initialized:")
     # Check which parts are not yet initialized
+    text = ""
     if not st.session_state['rlr'].dataL_loaded:
-        st.write("  - Need to load a left data set (refer to data input page)")
+        text += "  - Need to load a left data set (refer to Data Input page)\n"
     if not st.session_state['rlr'].dataR_loaded:
-        st.write("  - Need to load a right data set (refer to data input page)")
+        text += "  - Need to load a right data set (refer to Data Input page)\n"
     if not st.session_state['rlr'].var_schema_loaded:
-        st.write("  - Need to define a variable comparison schema (refer to data input page)")
+        text += "  - Need to define a variable comparison schema (refer to Data Input page)\n"
     if not st.session_state['rlr'].comps_loaded:
-        st.write("  - Need to load a file of linkages for review (refer to sidebar)")
+        text += "  - Need to load a file of linkages for review (refer to Data Input page)\n"
     if len(st.session_state['rlr'].label_choices) == 0:
-        st.write("  - Need to define the label choices (refer to sidebar)")
+        text += "  - Need to define the label choices (refer to sidebar)\n"
+    st.markdown(text)
