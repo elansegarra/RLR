@@ -10,12 +10,6 @@ st.set_page_config(page_title="RLR: Linkage Review", page_icon="📈")
 #### Function Definitions #################################################
 ###########################################################################
 
-def remove_comp_file():
-    """ Removes the comparison file """
-    st.session_state['rlr'].comps_loaded = False
-    st.session_state['rlr'].comp_df = None
-    st.session_state['rlr'].ready_to_review = False
-
 def tformat(text, align='C', el='p'):
     align_dict = {'L':'left', 'C':'center','R':'right'}
     return(f"<{el} style='text-align: {align_dict[align]};'>{text}</{el}>")
@@ -67,44 +61,8 @@ if 'review_file_name' not in st.session_state:
     st.session_state['review_file_name'] = "labeled_data.csv"
 
 with st.sidebar:
-    st.header("Load Review File")
-    # Checking if it has already been loaded
-    if st.session_state['rlr'].comps_loaded:
-        if st.session_state['rlr'].comp_pairs_file_path is not None:
-            filename = st.session_state['rlr'].comp_pairs_file_path
-        else: filename = "File name unknown"
-        st.write(f"Comparison File Loaded: {filename}")
-        st.button("Load a different comparison file", key = "reload", on_click = remove_comp_file)
-    else:
-        # Ask for file upload from user
-        review_file = st.file_uploader("Upload file of linked pairs for review", 
-                                        accept_multiple_files=False, type = ['csv', 'dta'])
-        if review_file is None:
-                st.write("")
-        else:
-            # Open the data linkage file (after determining type)
-            data_ext = os.path.splitext(review_file.name)[1]
-            if      data_ext == ".csv":   df_review = pd.read_csv(review_file)
-            elif    data_ext == ".dta":   df_review = pd.read_stata(review_file)
-            else:                           
-                raise NotImplementedError(f"Filetype of {review_file.name} must be either .csv or .dta")
-
-            # Load the passed file of comparison linkages
-            st.session_state['rlr'].load_comp_pairs(df_review)
-            if st.session_state['rlr'].comps_loaded:
-                msg = "Successfully loaded a file for review."
-                msg_text = f'<p style="color:Green;">{msg}</p>'
-                st.markdown(msg_text, unsafe_allow_html=True)
-                st.session_state['review_file_name'] = review_file.name
-
     # Display information if a file has been loaded
-    if (st.session_state['rlr'].comps_loaded) or (review_file is not None):
-        # Check box for auto saving label
-        autosave_val = st.checkbox("Autosave Labels", value = st.session_state['rlr'].autosave,
-                help = "Automatically save labels and notes to comparison file as they are changed")
-        if (autosave_val != st.session_state['rlr'].autosave):
-            st.session_state['rlr'].set_autosave(autosave_val)
-
+    if (st.session_state['rlr'].comps_loaded):
         # Gather label counts and display a summary
         st.subheader("File Label Summary")
         l_counts = st.session_state['rlr'].get_label_counts()
@@ -114,6 +72,14 @@ with st.sidebar:
         l_counts_df['%'] = l_counts_df['%'].round(1)
         st.dataframe(l_counts_df)
     
+    st.header("Options")
+    if (st.session_state['rlr'].comps_loaded):
+        # Check box for auto saving label
+        autosave_val = st.checkbox("Autosave Labels", value = st.session_state['rlr'].autosave,
+                help = "Automatically save labels and notes to comparison file as they are changed")
+        if (autosave_val != st.session_state['rlr'].autosave):
+            st.session_state['rlr'].set_autosave(autosave_val)
+
     # Display and allow editing of current label choices
     new_label_choices = []
     curr_labels = "\n".join(st.session_state['rlr'].label_choices)

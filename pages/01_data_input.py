@@ -33,6 +33,12 @@ def del_var_group(vargp_index):
     del var_comp_schema[vargp_index]
     st.session_state['rlr'].set_var_comp_schema(var_comp_schema)
 
+def remove_comp_file():
+    """ Removes the comparison file """
+    st.session_state['rlr'].comps_loaded = False
+    st.session_state['rlr'].comp_df = None
+    st.session_state['rlr'].ready_to_review = False
+
 ###########################################################################
 #### App - Sidebar ########################################################
 ###########################################################################
@@ -205,3 +211,57 @@ if (st.session_state['rlr'].dataL_loaded) and (st.session_state['rlr'].dataR_loa
     # st.write(st.session_state['rlr'].get_var_comp_schema())
 else:
     st.write("User must load two data sets with identifying variables before defining the comparison schema.")
+
+###########################################################################
+#### App - Loading Comparison File ########################################
+###########################################################################
+
+st.header("Loading Comparison File")
+# Checking if both data sets have been properly loaded
+if (st.session_state['rlr'].dataL_loaded) and (st.session_state['rlr'].dataR_loaded):
+    st.write(f"""Load a comparison file which contains the pairs of records which the user would like
+                to review and label. Every row of this file represents a pair of records to be reviewed.
+                Therefore this file should have columns that identify a record in the left data set
+                (i.e. {", ".join(st.session_state['rlr'].id_vars_l)}) and columns that identify a record 
+                in the right data set (i.e. {", ".join(st.session_state['rlr'].id_vars_r)}). """)
+    # Checking if it has already been loaded
+    if st.session_state['rlr'].comps_loaded:
+        if st.session_state['rlr'].comp_pairs_file_path is not None:
+            filename = st.session_state['rlr'].comp_pairs_file_path
+        else: filename = "File name unknown"
+        st.write(f"Comparison File Loaded: {filename}")
+        st.button("Load a different comparison file", key = "reload", on_click = remove_comp_file)
+    else:
+        # Ask for file upload from user
+        review_file = st.file_uploader("Upload file of linked pairs for review", 
+                                        accept_multiple_files=False, type = ['csv', 'dta'])
+        if review_file is None:
+                st.write("")
+        else:
+            # Open the data linkage file (after determining type)
+            data_ext = os.path.splitext(review_file.name)[1]
+            if      data_ext == ".csv":   df_review = pd.read_csv(review_file)
+            elif    data_ext == ".dta":   df_review = pd.read_stata(review_file)
+            else:                           
+                raise NotImplementedError(f"Filetype of {review_file.name} must be either .csv or .dta")
+
+            # Load the passed file of comparison linkages
+            st.session_state['rlr'].load_comp_pairs(df_review)
+            if st.session_state['rlr'].comps_loaded:
+                msg = "Successfully loaded a file for review."
+                msg_text = f'<p style="color:Green;">{msg}</p>'
+                st.markdown(msg_text, unsafe_allow_html=True)
+                st.session_state['review_file_name'] = review_file.name
+
+    # Display information if a file has been loaded
+    if (st.session_state['rlr'].comps_loaded) or (review_file is not None):
+        # Gather label counts and display a summary
+        st.subheader("Comparison File Label Summary")
+        l_counts = st.session_state['rlr'].get_label_counts()
+        l_counts_df = pd.DataFrame.from_dict(l_counts, orient = 'index', columns = ['Count'])
+        l_counts_df.index.name = "Label"
+        l_counts_df['%'] = l_counts_df['Count']/l_counts_df['Count'].sum()*100
+        l_counts_df['%'] = l_counts_df['%'].round(1)
+        st.dataframe(l_counts_df)
+else:
+    st.write("User must load two data sets with identifying variables before loading a comparison file.")
