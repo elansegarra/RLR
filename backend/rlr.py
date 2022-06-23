@@ -83,7 +83,7 @@ class rlr:
             id_overlap = set(self.id_vars_r) & set(id_vars)
         else:
             id_overlap = []
-        assert len(id_overlap) == 0, "Currently cannot handle overlapping id variables"
+        assert len(id_overlap) == 0, f"Currently cannot handle overlapping id variables({id_overlap})"
 
         # Validate ids (check they exist and uniquely define a row) and save them
         if side == 'l':
@@ -666,11 +666,14 @@ class rlr:
         # Sets default file path if nothing passed
         if comp_pairs_path is None: comp_pairs_path = self.comp_pairs_file_path
 
-        # Check file format and save file accordingly
-        data_ext = os.path.splitext(comp_pairs_path)[1]
-        if      data_ext == ".csv":   self.comp_df.to_csv(comp_pairs_path, index = False)
-        elif    data_ext == ".dta":   self.comp_df.to_stata(comp_pairs_path, write_index = False)
-        else:   raise NotImplementedError(f"Filetype of {data_ext} must be either csv or dta")
+        if isinstance(comp_pairs_path, str):
+            # Check file format and save file accordingly
+            data_ext = os.path.splitext(comp_pairs_path)[1]
+            if      data_ext == ".csv":   self.comp_df.to_csv(comp_pairs_path, index = False)
+            elif    data_ext == ".dta":   self.comp_df.to_stata(comp_pairs_path, write_index = False)
+            else:   raise NotImplementedError(f"Filetype of {data_ext} must be either csv or dta")
+        else:
+            warnings.warn("Unable to save the comparison file without a proper file path")
 
     def save_label_or_note(self, text, label_or_note = 'label', comp_ind = None, 
                             comp_pairs_path = None):
