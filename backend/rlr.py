@@ -50,13 +50,14 @@ class rlr:
         else:
             self.ready_to_review = False
     
-    def load_dataset(self, data_path, id_vars, side):
+    def load_dataset(self, data_path, id_vars, side, data_name = None):
         """ Loads two data sets and specifies the id variables in each 
         
         Args:
             data_path: (str or dataframe) path to data set file (either csv or dta) or the dataframe itself
             id_vars: (str or list of str) variables that uniquely define a record in data set
             side: (str) Either 'l' or 'r' indicating which side is being loaded
+            data_name: (optional str) name of the dataset being loaded
         """
         # Check if passed object was a str (ie path) or dataframe
         if isinstance(data_path, str):
@@ -95,6 +96,7 @@ class rlr:
             self.id_vars_l = id_vars
             self.dataL = data_df
             self.dataL_loaded = True
+            self.dataL_name = data_name
             self.dataL.set_index(self.id_vars_l, inplace=True, drop=False)
             if path_was_passed: self.dataL_file_path = data_path
             else:               self.dataL_file_path = None
@@ -105,6 +107,7 @@ class rlr:
             self.id_vars_r = id_vars
             self.dataR = data_df
             self.dataR_loaded = True
+            self.dataR_name = data_name
             self.dataR.set_index(self.id_vars_r, inplace=True, drop=False)
             if path_was_passed: self.dataR_file_path = data_path
             else:               self.dataR_file_path = None
@@ -196,8 +199,10 @@ class rlr:
                 rev_packet: dict containing review parameters
                     The dict should have the following keys and values:
                     'file_L': str path to the first data file 
+                    'file_L_name': (optional str) name of the left data set
                     'file_L_ids': str or list of str indicating the row ids in file_L
                     'file_R': str path to the second data file 
+                    'file_R_name': (optional str) name of the right data set
                     'file_R_ids': str or list of str indicating the row ids in file_R
                     'file_comps': str path to the data file containing record pairs
                     'var_group_schema': dict of variable comparisons (see set_var_comp_schema)
@@ -211,8 +216,8 @@ class rlr:
             assert key in rev_packet, f"Review packet must include '{key}' as a key"
         
         # Load the various parts from the review packet file
-        self.load_dataset(rev_packet['file_L'], rev_packet['file_L_ids'], 'l')
-        self.load_dataset(rev_packet['file_R'], rev_packet['file_R_ids'], 'r')
+        self.load_dataset(rev_packet['file_L'], rev_packet['file_L_ids'], 'l', data_name = rev_packet.get('file_L_name', None))
+        self.load_dataset(rev_packet['file_R'], rev_packet['file_R_ids'], 'r', data_name = rev_packet.get('file_R_name', None))
         self.load_comp_pairs(rev_packet['file_comps'])
         self.set_var_comp_schema(rev_packet['var_group_schema'])
         self.set_label_choices(rev_packet['label_choices'])
