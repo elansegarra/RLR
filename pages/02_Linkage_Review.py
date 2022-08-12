@@ -116,28 +116,36 @@ if (st.session_state['rlr'].ready_to_review):
     # Data Comparison Titles
     comp_heading_text = f"Linkage {curr_comp_index+1}/{num_comparisons}"
     st.markdown(tformat(comp_heading_text, el = 'h3'),  unsafe_allow_html=True)
-    tcol1, tcol2 = st.columns(2)
-    tcol1.markdown(tformat("Left Data"),  unsafe_allow_html=True)
-    tcol2.markdown(tformat("Right Data"),  unsafe_allow_html=True)
 
-    # Print actual data in comparison (iterate through var schemas)
-    for var_group in curr_comp_data:
-        Lcol, Mcol, Rcol = st.columns([4,1,4])
-        # Print all data values in left column
-        l_val = "<br>".join([str(item) for item in var_group['lvals']])
-        Lcol.markdown(tformat(l_val,'R'),  unsafe_allow_html=True)
-        # Print the name of the comparison group in the middle column
-        Mcol.markdown(tformat(var_group['name']),  unsafe_allow_html=True)
-        # Print all data values in right column
-        r_val = "<br>".join([str(item) for item in var_group['rvals']])
-        Rcol.markdown(tformat(r_val,'L'),  unsafe_allow_html=True)
+    # Check if a pair was indeed grabbed (might not work if indices weren't found)
+    if curr_comp_data is None:
+        l_id = st.session_state['rlr'].comp_df.loc[curr_comp_index,st.session_state['rlr'].id_vars_l]
+        r_id = st.session_state['rlr'].comp_df.loc[curr_comp_index,st.session_state['rlr'].id_vars_r]
+        st.write(f"No records found for id={l_id} or id={r_id} (maybe both)")
+    else:
+        # Print left and right side headings
+        tcol1, tcol2 = st.columns(2)
+        tcol1.markdown(tformat("Left Data"),  unsafe_allow_html=True)
+        tcol2.markdown(tformat("Right Data"),  unsafe_allow_html=True)
 
-    # Print any note associated with this comparison pair
-    note_col = st.session_state['rlr'].REV_NOTE_COL
-    old_note = st.session_state['rlr'].comp_df.loc[curr_comp_index, note_col]
-    new_note = st.text_input("Note:", value = old_note, key = f"note_{curr_comp_index}")
-    # st.session_state['rlr'].comp_df.loc[curr_comp_index, note_col] = new_note
-    st.session_state['rlr'].save_label_or_note(new_note, 'note')
+        # Print actual data in comparison (iterate through var schemas)
+        for var_group in curr_comp_data:
+            Lcol, Mcol, Rcol = st.columns([4,1,4])
+            # Print all data values in left column
+            l_val = "<br>".join([str(item) for item in var_group['lvals']])
+            Lcol.markdown(tformat(l_val,'R'),  unsafe_allow_html=True)
+            # Print the name of the comparison group in the middle column
+            Mcol.markdown(tformat(var_group['name']),  unsafe_allow_html=True)
+            # Print all data values in right column
+            r_val = "<br>".join([str(item) for item in var_group['rvals']])
+            Rcol.markdown(tformat(r_val,'L'),  unsafe_allow_html=True)
+
+        # Print any note associated with this comparison pair
+        note_col = st.session_state['rlr'].REV_NOTE_COL
+        old_note = st.session_state['rlr'].comp_df.loc[curr_comp_index, note_col]
+        new_note = st.text_input("Note:", value = old_note, key = f"note_{curr_comp_index}")
+        # st.session_state['rlr'].comp_df.loc[curr_comp_index, note_col] = new_note
+        st.session_state['rlr'].save_label_or_note(new_note, 'note')
 
     # Grab the label choices and the label for current comparison
     choices = ["No Label"] + st.session_state['rlr'].get_label_choices()
@@ -156,7 +164,7 @@ if (st.session_state['rlr'].ready_to_review):
     # choice_col.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content: center;} </style>', unsafe_allow_html=True)
     new_label = choice_col.radio("Choose label determination:", choices,
                                 key = f"lab_choices_{curr_comp_index}",
-                                index = curr_label_ind)
+                                index = curr_label_ind, disabled=(curr_comp_data is None))
     next_col.button("Next Pair >>", disabled=(curr_comp_index==num_comparisons-1), on_click=next_pair)
     next_col.button("Next Unlabeled >>", disabled=(curr_comp_index==num_comparisons-1),
                         on_click=next_unlabeled_pair)
