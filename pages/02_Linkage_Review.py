@@ -123,10 +123,12 @@ if (st.session_state['rlr'].ready_to_review):
         r_id = st.session_state['rlr'].comp_df.loc[curr_comp_index,st.session_state['rlr'].id_vars_r]
         st.write(f"No records found for id={l_id} or id={r_id} (maybe both)")
     else:
-        # Print left and right side headings
+        # Print left and right side headings (with names if passed)
+        left_name = "" if (st.session_state['rlr'].dataL_name is None) else f" ({st.session_state['rlr'].dataL_name})"
+        right_name = "" if (st.session_state['rlr'].dataR_name is None) else f" ({st.session_state['rlr'].dataR_name})"
         tcol1, tcol2 = st.columns(2)
-        tcol1.markdown(tformat("Left Data"),  unsafe_allow_html=True)
-        tcol2.markdown(tformat("Right Data"),  unsafe_allow_html=True)
+        tcol1.markdown(tformat("Left Data"+left_name),  unsafe_allow_html=True)
+        tcol2.markdown(tformat("Right Data"+right_name),  unsafe_allow_html=True)
 
         # Print actual data in comparison (iterate through var schemas)
         for var_group in curr_comp_data:

@@ -85,7 +85,8 @@ st.header("Loading Left and Right Data Sets")
 with st.expander("Left Data Set:", expanded = True):
     # Checking if left data has already been loaded
     if st.session_state['rlr'].dataL_loaded:
-        st.write("Left Data Set Already Loaded")
+        left_name = " " if (st.session_state['rlr'].dataL_name is None) else f" ({st.session_state['rlr'].dataL_name}) "
+        st.write(f"Left Data Set{left_name}Already Loaded")
         st.dataframe(st.session_state['rlr'].dataL.head())
         st.write(f"IDs: {st.session_state['rlr'].id_vars_l}")
         st.button("Load a different data set", key = "reload_l", on_click = remove_data_file, args=('l', ))
@@ -128,7 +129,8 @@ with st.expander("Left Data Set:", expanded = True):
 with st.expander("Right Data Set:", expanded = True):
     # Checking if left data has already been loaded
     if st.session_state['rlr'].dataR_loaded:
-        st.write("Right Data Set Already Loaded")
+        right_name = " " if (st.session_state['rlr'].dataR_name is None) else f" ({st.session_state['rlr'].dataR_name}) "
+        st.write(f"Right Data Set{right_name}Already Loaded")
         st.dataframe(st.session_state['rlr'].dataR.head())
         st.write(f"IDs: {st.session_state['rlr'].id_vars_r}")
         st.button("Load a different data set", key = "reload_r", on_click = remove_data_file, args=('r', ))
@@ -191,6 +193,10 @@ if (st.session_state['rlr'].dataL_loaded) and (st.session_state['rlr'].dataR_loa
     else:
         curr_var_comp_schema = [{'name': "", 'lvars': [], 'rvars': []}]
 
+    # Gather names of data sets if they have been set
+    left_name = "Left Data Set" if (st.session_state['rlr'].dataL_name is None) else st.session_state['rlr'].dataL_name
+    right_name = "Right Data Set" if (st.session_state['rlr'].dataR_name is None) else st.session_state['rlr'].dataR_name
+
     # Iterate through each var group and print out related inputs
     new_var_comp_schema = []
     for i in range(len(curr_var_comp_schema)):
@@ -198,9 +204,9 @@ if (st.session_state['rlr'].dataL_loaded) and (st.session_state['rlr'].dataR_loa
         with st.expander(f"Var. Group: {var_group['name']}", expanded = True):
             col_1, col_2 = st.columns([1,3])
             var_name = col_1.text_input("Var. Group Name:", value = var_group['name'], key = f"vargp_{i}_name")
-            vars_l = col_2.multiselect("Pick Vars from Left Data Set:", l_vars,
+            vars_l = col_2.multiselect(f"Pick Vars from {left_name}:", l_vars,
                                         default = var_group['lvars'], key = f"vargp_{i}_lvars")
-            vars_r = col_2.multiselect("Pick Vars from Right Data Set:", r_vars, 
+            vars_r = col_2.multiselect(f"Pick Vars from {right_name}:", r_vars, 
                                         default = var_group['rvars'], key = f"vargp_{i}_rvars")
             del_button = col_1.button("Delete Group", key = f"vargp_{i}_del",
                                         on_click = del_var_group, args=(i, ))
