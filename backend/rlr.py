@@ -15,6 +15,8 @@ class rlr:
     REV_LABEL_IND_COL = "rlr_label_ind"
     REV_DATE_COL = "rlr_modified"
     REV_NOTE_COL = "rlr_note"
+    REV_ID_IN_R_COL = "rlr_r_id_exists"
+    REV_ID_IN_L_COL = "rlr_l_id_exists"
     COMP_EXIST_THRESH = 0.8  # Set to 0 to skip checking if all comp pairs exist in data
     COMP_PRINT_COL_WEIGHT = [0.4, 0.2, 0.4]
     COMP_DEFAULT_LINE_WIDTH = 80
@@ -152,23 +154,29 @@ class rlr:
         comp_df.reset_index(inplace = True, drop = True) # Changes index to 0,1,2,....
 
         # Add comparison columns if not already there
-        if self.REV_LABEL_IND_COL not in comp_df:
-            comp_df[self.REV_LABEL_IND_COL] = 0
+        for comp_var in [self.REV_ID_IN_L_COL, self.REV_ID_IN_R_COL, self.REV_LABEL_IND_COL]:
+            if comp_var not in comp_df: comp_df[comp_var] = 0
         for comp_var in [self.REV_LABEL_COL, self.REV_DATE_COL, self.REV_NOTE_COL]:
             if comp_var not in comp_df: comp_df[comp_var] = ""
         # Convert modified column to proper datetime object
         comp_df[self.REV_DATE_COL] = pd.to_datetime(comp_df[self.REV_DATE_COL])
         
-        # Check that id value pairs are found in the data files (assuming a positive threshhold)
+        # Flag and count any ids that are not found in the left and/or right datasets
         num_missing = 0
         if self.COMP_EXIST_THRESH > 0:
             for i in range(comp_df.shape[0]):
+                # Grab the ids for the record pair
+                l_id = tuple(comp_df.loc[i,self.id_vars_l]) 
+                r_id = tuple(comp_df.loc[i,self.id_vars_r])
+                # Mark any ids that are not found
                 # TODO: Below logic assumes id_vars only include one variable each
-                l_id = comp_df.iloc[i][self.id_vars_l[0]]
-                r_id = comp_df.iloc[i][self.id_vars_r[0]]
-                if (l_id not in self.dataL.index) or (r_id not in self.dataR.index):
-                    comp_df.at[i, self.REV_LABEL_IND_COL] = -1
+                if (l_id[0] in self.dataL.index):   comp_df.at[i, self.REV_ID_IN_L_COL] = 1
+                if (r_id[0] in self.dataR.index):   comp_df.at[i, self.REV_ID_IN_R_COL] = 1
+                if (l_id[0] not in self.dataL.index) or (r_id[0] not in self.dataR.index):
                     num_missing += 1
+        
+        # Send a warning if the percentage of unfound ids exceeds the set threshold
+        # print(f"Of {comp_df.shape[0]} records, {num_missing} pairs have an unfindable id")
         perc_found = (comp_df.shape[0] - num_missing)/comp_df.shape[0]
         if perc_found < self.COMP_EXIST_THRESH:
             warnings.warn(f"Only found {np.round(perc_found*100,1)}% of comparison ids.")
@@ -290,16 +298,23 @@ class rlr:
         index_in_range = (0 <= comp_ind <= self.comp_df.shape[0]-1)
         assert index_in_range, f"Comparison index ({comp_ind}) is out of bounds"
 
-        # Check if this comparison pair was identified as having unfound ids
-        if self.comp_df.loc[comp_ind, self.REV_LABEL_IND_COL] == -1:
-            warnings.warn(f"This record pair (at index {comp_ind}) included ids that were not found in the data sets")
-            return None
-
-        # Extract raw data associated with the comparison pair ids
+        # Check if this comparison pair was flagged as having unfound ids
+        unfound_l_id = (self.comp_df.loc[comp_ind, self.REV_ID_IN_L_COL] == 0)
+        unfound_r_id = (self.comp_df.loc[comp_ind, self.REV_ID_IN_R_COL] == 0)
+        # Grab the ids for this record pair
         l_id = tuple(self.comp_df.loc[comp_ind,self.id_vars_l])
         r_id = tuple(self.comp_df.loc[comp_ind,self.id_vars_r])
-        l_rec_data = self.dataL.loc[l_id].to_dict()
-        r_rec_data = self.dataR.loc[r_id].to_dict()
+        # If id was not found send a warning, if it was found then extract the raw record data
+        if unfound_l_id:    
+            warnings.warn(f"For record pair {comp_ind} the left id ({l_id}) was not found.")
+            l_rec_data = dict()
+        else: 
+            l_rec_data = self.dataL.loc[l_id].to_dict()
+        if unfound_r_id:    
+            warnings.warn(f"For record pair {comp_ind} the right id ({r_id}) was not found.")
+            r_rec_data = dict()
+        else:
+            r_rec_data = self.dataR.loc[r_id].to_dict()
 
         # Check requested data format and process accordingly
         if raw_or_grouped == "raw":
@@ -311,8 +326,8 @@ class rlr:
             for var_group in self.var_schema:
                 # Get values of each variable in the group from the data records
                 var_group_data = {'name':var_group['name'],
-                                'lvals': [l_rec_data[var] for var in var_group['lvars']],
-                                'rvals': [r_rec_data[var] for var in var_group['rvars']]}
+                                'lvals': [l_rec_data.get(var, "no data found") for var in var_group['lvars']],
+                                'rvals': [r_rec_data.get(var, "no data found") for var in var_group['rvars']]}
                 rec_data_grouped.append(var_group_data)
             return rec_data_grouped
         else:
