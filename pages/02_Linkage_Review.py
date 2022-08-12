@@ -170,9 +170,15 @@ if (st.session_state['rlr'].ready_to_review):
     next_col.button("Next Pair >>", disabled=(curr_comp_index==num_comparisons-1), on_click=next_pair)
     next_col.button("Next Unlabeled >>", disabled=(curr_comp_index==num_comparisons-1),
                         on_click=next_unlabeled_pair)
-    # Save the label choice to rlr instance
+    # Save the label choice to rlr instance (but first grab the labeled count before this label)
     if new_label == "No Label": new_label = ""
+    num_labeled_before = st.session_state['rlr'].comp_df[st.session_state['rlr'].REV_LABEL_IND_COL].sum()
+    num_pairs = st.session_state['rlr'].comp_df.shape[0]
     st.session_state['rlr'].save_label_or_note(new_label, 'label')
+    # Check if this was the final pair to be labeled (if so celebrate!)
+    num_labeled_after = st.session_state['rlr'].comp_df[st.session_state['rlr'].REV_LABEL_IND_COL].sum()
+    if (num_labeled_before == num_pairs-1) and (num_labeled_after == num_pairs):
+        st.balloons()
 
     # Note about local version of data
     st.write("Note: All labels and notes are only stored temporarily in browser cache. To save locally use the download button in the sidebar.")
