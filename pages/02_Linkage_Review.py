@@ -164,7 +164,7 @@ if (st.session_state['rlr'].ready_to_review):
     prev_col.button("<< Previous Pair", disabled=(curr_comp_index==0), on_click=prev_pair)
     prev_col.button("<< Previous Unlabeled", disabled=(curr_comp_index==0), on_click=prev_unlabeled_pair)
     # choice_col.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content: center;} </style>', unsafe_allow_html=True)
-    new_label = choice_col.radio("Choose label determination:", choices,
+    new_label = choice_col.radio("Choose label:", choices,
                                 key = f"lab_choices_{curr_comp_index}",
                                 index = curr_label_ind, disabled=(curr_comp_data is None))
     next_col.button("Next Pair >>", disabled=(curr_comp_index==num_comparisons-1), on_click=next_pair)
