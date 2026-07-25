@@ -10,9 +10,12 @@ st.set_page_config(page_title="RLR: Linkage Review", page_icon="📈")
 #### Function Definitions #################################################
 ###########################################################################
 
-def tformat(text, align='C', el='p'):
+def tformat(text, align='C', el='p', bg_color=None):
     align_dict = {'L':'left', 'C':'center','R':'right'}
-    return(f"<{el} style='text-align: {align_dict[align]};'>{text}</{el}>")
+    if bg_color is None:
+        return(f"<{el} style='text-align: {align_dict[align]};'>{text}</{el}>")
+    else: 
+        return(f"<{el} style='text-align: {align_dict[align]};background-color:{bg_color};'>{text}</{el}>")
 
 def next_pair():
     """ Move to next comparison if not at end """
@@ -132,15 +135,22 @@ if (st.session_state['rlr'].ready_to_review):
 
         # Print actual data in comparison (iterate through var schemas)
         for var_group in curr_comp_data:
-            Lcol, Mcol, Rcol = st.columns([4,1,4])
+            # Check if values are the same (and highlight green if so)
+            lower_lvals = "".join([str(item).strip().lower() for item in var_group['lvals']])
+            lower_rvals = "".join([str(item).strip().lower() for item in var_group['rvals']])
+            if lower_lvals == lower_rvals:
+                highlight_color = 'green'
+            else: highlight_color = '#1fe0' # Transparent
+            Lcol, Mcol, Rcol = st.columns([4,1.5,4])
             # Print all data values in left column
             l_val = "<br>".join([str(item) for item in var_group['lvals']])
-            Lcol.markdown(tformat(l_val,'R'),  unsafe_allow_html=True)
+            # l_val = f":red-background[{l_val}]"
+            Lcol.markdown(tformat(l_val,'R',bg_color=highlight_color),  unsafe_allow_html=True)
             # Print the name of the comparison group in the middle column
             Mcol.markdown(tformat(var_group['name']),  unsafe_allow_html=True)
             # Print all data values in right column
             r_val = "<br>".join([str(item) for item in var_group['rvals']])
-            Rcol.markdown(tformat(r_val,'L'),  unsafe_allow_html=True)
+            Rcol.markdown(tformat(r_val,'L',bg_color=highlight_color),  unsafe_allow_html=True)
 
         # Print any note associated with this comparison pair
         note_col = st.session_state['rlr'].REV_NOTE_COL
@@ -160,7 +170,7 @@ if (st.session_state['rlr'].ready_to_review):
         curr_label_ind = 0
 
     # Display buttons for link determinations
-    prev_col, sp_1, choice_col, sp_2, next_col = st.columns([2.5,1,2,1,2.5])
+    prev_col, sp_1, choice_col, sp_2, next_col = st.columns([2.5,0.5,3,0.5,2.5])
     prev_col.button("<< Previous Pair", disabled=(curr_comp_index==0), on_click=prev_pair)
     prev_col.button("<< Previous Unlabeled", disabled=(curr_comp_index==0), on_click=prev_unlabeled_pair)
     # choice_col.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content: center;} </style>', unsafe_allow_html=True)
